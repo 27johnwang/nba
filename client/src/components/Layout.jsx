@@ -20,6 +20,7 @@ const Layout = () => {
   const { isAuthenticated, user, logout } = useAuth()
   const navigate = useNavigate()
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false)
+  const [dropdownOpen, setDropdownOpen] = useState(false)
   const [unreadCount, setUnreadCount] = useState(0)
 
   useEffect(() => {
@@ -84,29 +85,37 @@ const Layout = () => {
                       </span>
                     )}
                   </Link>
-                  <div className="relative group">
-                    <button className="flex items-center space-x-1 hover:bg-nyu-violet-dark px-3 py-2 rounded-lg transition-colors">
+                  <div className="relative">
+                    <button
+                      onClick={() => setDropdownOpen(!dropdownOpen)}
+                      className="flex items-center space-x-1 hover:bg-nyu-violet-dark px-3 py-2 rounded-lg transition-colors"
+                    >
                       <User size={18} />
                       <span>{user?.name?.split(' ')[0]}</span>
                     </button>
-                    <div className="absolute right-0 mt-2 w-48 bg-white rounded-lg shadow-lg py-1 hidden group-hover:block">
-                      <Link to="/profile" className="block px-4 py-2 text-gray-800 hover:bg-gray-100">
-                        Profile
-                      </Link>
-                      <Link to="/my-listings" className="block px-4 py-2 text-gray-800 hover:bg-gray-100">
-                        My Listings
-                      </Link>
-                      <Link to="/transactions" className="block px-4 py-2 text-gray-800 hover:bg-gray-100">
-                        Transactions
-                      </Link>
-                      <hr className="my-1" />
-                      <button
-                        onClick={handleLogout}
-                        className="w-full text-left px-4 py-2 text-red-600 hover:bg-gray-100"
-                      >
-                        Logout
-                      </button>
-                    </div>
+                    {dropdownOpen && (
+                      <>
+                        <div className="fixed inset-0 z-40" onClick={() => setDropdownOpen(false)} />
+                        <div className="absolute right-0 mt-1 w-48 bg-white rounded-lg shadow-lg py-1 z-50">
+                          <Link to="/profile" onClick={() => setDropdownOpen(false)} className="block px-4 py-2 text-gray-800 hover:bg-gray-100">
+                            Profile
+                          </Link>
+                          <Link to="/my-listings" onClick={() => setDropdownOpen(false)} className="block px-4 py-2 text-gray-800 hover:bg-gray-100">
+                            My Listings
+                          </Link>
+                          <Link to="/transactions" onClick={() => setDropdownOpen(false)} className="block px-4 py-2 text-gray-800 hover:bg-gray-100">
+                            Transactions
+                          </Link>
+                          <hr className="my-1" />
+                          <button
+                            onClick={handleLogout}
+                            className="w-full text-left px-4 py-2 text-red-600 hover:bg-gray-100"
+                          >
+                            Logout
+                          </button>
+                        </div>
+                      </>
+                    )}
                   </div>
                 </>
               ) : (

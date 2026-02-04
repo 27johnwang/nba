@@ -217,7 +217,7 @@ const CreateListing = () => {
                   value={formData.price}
                   onChange={handleChange}
                   min="0.01"
-                  step="0.50"
+                  step="0.01"
                   placeholder="8.00"
                   className="input-field pl-10"
                   required
