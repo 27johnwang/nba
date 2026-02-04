@@ -40,13 +40,23 @@ app.use('/api/messages', messagesRoutes);
 app.use('/api/reviews', reviewsRoutes);
 
 // Serve React frontend in production
+import fs from 'fs';
 const clientDist = path.join(__dirname, '../../client/dist');
-app.use(express.static(clientDist));
+const indexHtml = path.join(clientDist, 'index.html');
 
-// All non-API routes serve the React app (for client-side routing)
-app.get('*', (req, res) => {
-  res.sendFile(path.join(clientDist, 'index.html'));
-});
+if (fs.existsSync(clientDist)) {
+  app.use(express.static(clientDist));
+  // All non-API routes serve the React app (for client-side routing)
+  app.get('*', (req, res) => {
+    res.sendFile(indexHtml);
+  });
+  console.log('Serving frontend from', clientDist);
+} else {
+  console.log('No client/dist found at', clientDist, '- frontend not served');
+  app.get('*', (req, res) => {
+    res.status(404).send('Frontend not built. Run: npm run build');
+  });
+}
 
 // Error handler
 app.use((err, req, res, next) => {
