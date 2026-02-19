@@ -40,16 +40,10 @@ export const sendVerificationEmail = async (email, code, name) => {
 
   const htmlContent = `
     <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">
-      <h2 style="color: #57068c;">Welcome to NYU Mealswipe Marketplace!</h2>
-      <p>Hi ${name},</p>
-      <p>Thank you for signing up. Please use the following code to verify your email address:</p>
+      <h2 style="color: #57068c;">NYU Mealswipe Marketplace</h2>
       <div style="background-color: #f5f5f5; padding: 20px; text-align: center; margin: 20px 0;">
         <span style="font-size: 32px; font-weight: bold; letter-spacing: 8px; color: #57068c;">${code}</span>
       </div>
-      <p>This code will expire in <strong>15 minutes</strong>.</p>
-      <p>If you didn't create an account, you can safely ignore this email.</p>
-      <hr style="border: none; border-top: 1px solid #eee; margin: 20px 0;">
-      <p style="color: #666; font-size: 12px;">NYU Mealswipe Marketplace - Buy and sell meal swipes with fellow NYU students</p>
     </div>
   `;
 
@@ -74,16 +68,10 @@ export const sendPasswordResetEmail = async (email, code, name) => {
 
   const htmlContent = `
     <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">
-      <h2 style="color: #57068c;">Welcome to NYU Mealswipe Marketplace!</h2>
-      <p>Hi ${name},</p>
-      <p>Thank you for signing up. Please use the following code to verify your email address:</p>
+      <h2 style="color: #57068c;">NYU Mealswipe Marketplace</h2>
       <div style="background-color: #f5f5f5; padding: 20px; text-align: center; margin: 20px 0;">
         <span style="font-size: 32px; font-weight: bold; letter-spacing: 8px; color: #57068c;">${code}</span>
       </div>
-      <p>This code will expire in <strong>15 minutes</strong>.</p>
-      <p>If you didn't create an account, you can safely ignore this email.</p>
-      <hr style="border: none; border-top: 1px solid #eee; margin: 20px 0;">
-      <p style="color: #666; font-size: 12px;">NYU Mealswipe Marketplace - Buy and sell meal swipes with fellow NYU students</p>
     </div>
   `;
 
