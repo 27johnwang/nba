@@ -136,7 +136,8 @@ const Messages = () => {
 
       await api.post('/messages', {
         receiver_id: selectedUser.id,
-        content: newMessage
+        content: newMessage,
+        listing_id: selectedUser.listing_id
       })
       setNewMessage('')
       fetchMessages(selectedUser.id)
