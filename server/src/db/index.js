@@ -1,131 +1,134 @@
-import initSqlJs from 'sql.js';
+import pg from 'pg';
 import { createTables } from './schema.js';
-import path from 'path';
-import { fileURLToPath } from 'url';
-import fs from 'fs';
 
-const __filename = fileURLToPath(import.meta.url);
-const __dirname = path.dirname(__filename);
+const { Pool } = pg;
 
-const dbPath = process.env.DB_PATH || path.join(__dirname, '../../data/mealswipe.db');
+// PostgreSQL connection using DATABASE_URL from Railway or local config
+const pool = new Pool({
+  connectionString: process.env.DATABASE_URL,
+  ssl: process.env.NODE_ENV === 'production' ? { rejectUnauthorized: false } : false
+});
 
-// Ensure data directory exists
-const dataDir = path.dirname(dbPath);
-if (!fs.existsSync(dataDir)) {
-  fs.mkdirSync(dataDir, { recursive: true });
+// Convert SQLite-style `?` placeholders to PostgreSQL `$1, $2, ...` style
+function convertPlaceholders(sql) {
+  let index = 0;
+  return sql.replace(/\?/g, () => `$${++index}`);
 }
 
-// Compatibility wrapper that mimics the better-sqlite3 API on top of sql.js
+// Convert SQLite date functions to PostgreSQL
+function convertDateFunctions(sql) {
+  return sql
+    .replace(/date\('now'\)/gi, 'CURRENT_DATE')
+    .replace(/datetime\('now'\)/gi, 'CURRENT_TIMESTAMP');
+}
+
+// Wrapper class that provides SQLite-like API on top of PostgreSQL
 class DatabaseWrapper {
-  constructor(sqlDb, filePath) {
-    this._db = sqlDb;
-    this._filePath = filePath;
+  constructor(pool) {
+    this._pool = pool;
   }
 
-  exec(sql) {
-    this._db.run(sql);
-    this._save();
+  // For direct SQL execution (used in schema creation)
+  async exec(sql) {
+    await this._pool.query(sql);
   }
 
+  // Compatibility with SQLite pragma (no-op for PostgreSQL)
   pragma(str) {
-    try {
-      this._db.run(`PRAGMA ${str}`);
-    } catch (e) {
-      // Ignore pragma errors (WAL not supported in sql.js)
-    }
+    // PostgreSQL doesn't need PRAGMA statements
   }
 
+  // Prepare a statement - returns an object with get/all/run methods
   prepare(sql) {
-    return new PreparedStatement(this._db, sql, this);
-  }
-
-  _save() {
-    try {
-      const data = this._db.export();
-      const buffer = Buffer.from(data);
-      fs.writeFileSync(this._filePath, buffer);
-    } catch (e) {
-      console.error('Error saving database:', e);
-    }
+    const convertedSql = convertDateFunctions(convertPlaceholders(sql));
+    return new PreparedStatement(this._pool, convertedSql);
   }
 }
 
 class PreparedStatement {
-  constructor(sqlDb, sql, wrapper) {
-    this._db = sqlDb;
+  constructor(pool, sql) {
+    this._pool = pool;
     this._sql = sql;
-    this._wrapper = wrapper;
   }
 
+  // Get single row (synchronous wrapper for async PostgreSQL)
   get(...params) {
-    let stmt;
-    try {
-      stmt = this._db.prepare(this._sql);
-      if (params.length > 0) {
-        stmt.bind(params);
-      }
-      if (stmt.step()) {
-        const result = stmt.getAsObject();
-        return this._convertTypes(result);
-      }
-      return undefined;
-    } finally {
-      if (stmt) stmt.free();
-    }
+    // We need to make this synchronous-looking but it's actually async
+    // This is a hack but maintains API compatibility
+    return this._getSync(params);
   }
 
+  // Get all rows
   all(...params) {
-    let stmt;
-    try {
-      stmt = this._db.prepare(this._sql);
-      if (params.length > 0) {
-        stmt.bind(params);
-      }
-      const results = [];
-      while (stmt.step()) {
-        results.push(this._convertTypes(stmt.getAsObject()));
-      }
-      return results;
-    } finally {
-      if (stmt) stmt.free();
-    }
+    return this._allSync(params);
   }
 
+  // Run statement (INSERT/UPDATE/DELETE)
   run(...params) {
-    this._db.run(this._sql, params);
-    this._wrapper._save();
-    return {
-      changes: this._db.getRowsModified()
-    };
+    return this._runSync(params);
   }
 
-  // sql.js returns integers as numbers and text as strings,
-  // but REAL values may come back oddly - normalize them
-  _convertTypes(row) {
-    if (!row) return row;
-    const result = {};
-    for (const [key, value] of Object.entries(row)) {
-      result[key] = value;
-    }
+  _getSync(params) {
+    // This uses a synchronous pattern via a cached promise
+    // The actual execution happens asynchronously
+    const result = { _pending: true, _params: params, _stmt: this };
+    return result;
+  }
+
+  _allSync(params) {
+    const result = { _pending: true, _params: params, _stmt: this, _isAll: true };
+    return result;
+  }
+
+  _runSync(params) {
+    const result = { _pending: true, _params: params, _stmt: this, _isRun: true };
     return result;
   }
 }
 
-// Initialize sql.js and create/load database
-const SQL = await initSqlJs();
+// Since Express routes are sync but pg is async, we need a different approach
+// We'll make the wrapper methods truly async and update routes to use async/await
 
-let sqlDb;
-if (fs.existsSync(dbPath)) {
-  const fileBuffer = fs.readFileSync(dbPath);
-  sqlDb = new SQL.Database(fileBuffer);
-} else {
-  sqlDb = new SQL.Database();
+class AsyncDatabaseWrapper {
+  constructor(pool) {
+    this._pool = pool;
+  }
+
+  pragma(str) {
+    // No-op for PostgreSQL
+  }
+
+  prepare(sql) {
+    const convertedSql = convertDateFunctions(convertPlaceholders(sql));
+    return new AsyncPreparedStatement(this._pool, convertedSql);
+  }
 }
 
-const db = new DatabaseWrapper(sqlDb, dbPath);
-db.pragma('foreign_keys = ON');
+class AsyncPreparedStatement {
+  constructor(pool, sql) {
+    this._pool = pool;
+    this._sql = sql;
+  }
 
-// Initialize tables
-createTables(db);
+  async get(...params) {
+    const result = await this._pool.query(this._sql, params);
+    return result.rows[0];
+  }
+
+  async all(...params) {
+    const result = await this._pool.query(this._sql, params);
+    return result.rows;
+  }
+
+  async run(...params) {
+    const result = await this._pool.query(this._sql, params);
+    return { changes: result.rowCount };
+  }
+}
+
+// Initialize database and create tables
+await createTables(pool);
+
+const db = new AsyncDatabaseWrapper(pool);
 
 export default db;

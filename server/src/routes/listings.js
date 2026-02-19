@@ -23,14 +23,14 @@ router.get('/dining-halls', (req, res) => {
 });
 
 // Get user's own listings (must be before /:id to avoid route conflict)
-router.get('/user/me', authenticateToken, (req, res) => {
+router.get('/user/me', authenticateToken, async (req, res) => {
   try {
-    const listings = db.prepare(`
+    const listings = await db.prepare(`
       SELECT l.*,
         (SELECT COUNT(*) FROM transactions t WHERE t.listing_id = l.id AND t.status = 'pending') as pending_count,
         (SELECT COUNT(*) FROM transactions t WHERE t.listing_id = l.id AND t.status = 'confirmed') as confirmed_count
       FROM listings l
-      WHERE l.seller_id = ? AND l.status != 'deleted'
+      WHERE l.seller_id = $1 AND l.status != 'deleted'
       ORDER BY l.created_at DESC
     `).all(req.user.id);
 
@@ -42,7 +42,7 @@ router.get('/user/me', authenticateToken, (req, res) => {
 });
 
 // Get all active listings
-router.get('/', optionalAuth, (req, res) => {
+router.get('/', optionalAuth, async (req, res) => {
   try {
     const { dining_hall, date, min_price, max_price, sort } = req.query;
 
@@ -51,32 +51,31 @@ router.get('/', optionalAuth, (req, res) => {
       FROM listings l
       JOIN users u ON l.seller_id = u.id
       WHERE l.status = 'active'
-        AND l.available_date >= date('now')
+        AND l.available_date >= CURRENT_DATE
         AND l.quantity > 0
     `;
     const params = [];
+    let paramIndex = 1;
 
     if (dining_hall) {
-      query += ' AND l.dining_hall = ?';
+      query += ` AND l.dining_hall = $${paramIndex++}`;
       params.push(dining_hall);
     }
 
     if (date) {
-      query += ' AND l.available_date = ?';
+      query += ` AND l.available_date = $${paramIndex++}`;
       params.push(date);
     }
 
     if (min_price) {
-      query += ' AND l.price >= ?';
+      query += ` AND l.price >= $${paramIndex++}`;
       params.push(parseFloat(min_price));
     }
 
     if (max_price) {
-      query += ' AND l.price <= ?';
+      query += ` AND l.price <= $${paramIndex++}`;
       params.push(parseFloat(max_price));
     }
-
-    // Note: Showing all listings including user's own so they can see their listing after creation
 
     // Sorting
     switch (sort) {
@@ -93,7 +92,7 @@ router.get('/', optionalAuth, (req, res) => {
         query += ' ORDER BY l.created_at DESC';
     }
 
-    const listings = db.prepare(query).all(...params);
+    const listings = await db.prepare(query).all(...params);
 
     res.json({ listings });
   } catch (error) {
@@ -103,14 +102,14 @@ router.get('/', optionalAuth, (req, res) => {
 });
 
 // Get single listing
-router.get('/:id', optionalAuth, (req, res) => {
+router.get('/:id', optionalAuth, async (req, res) => {
   try {
-    const listing = db.prepare(`
+    const listing = await db.prepare(`
       SELECT l.*, u.name as seller_name, u.seller_rating, u.seller_reviews,
              u.venmo_handle as seller_venmo, u.phone as seller_phone
       FROM listings l
       JOIN users u ON l.seller_id = u.id
-      WHERE l.id = ?
+      WHERE l.id = $1
     `).get(req.params.id);
 
     if (!listing) {
@@ -134,7 +133,7 @@ router.get('/:id', optionalAuth, (req, res) => {
 });
 
 // Create new listing
-router.post('/', authenticateToken, listingValidation, (req, res) => {
+router.post('/', authenticateToken, listingValidation, async (req, res) => {
   try {
     const {
       title,
@@ -149,15 +148,13 @@ router.post('/', authenticateToken, listingValidation, (req, res) => {
 
     const listingId = uuidv4();
 
-    const stmt = db.prepare(`
+    await db.prepare(`
       INSERT INTO listings (
         id, seller_id, title, description, price, quantity,
         dining_hall, available_date, available_time_start, available_time_end
       )
-      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
-    `);
-
-    stmt.run(
+      VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10)
+    `).run(
       listingId,
       req.user.id,
       title,
@@ -170,7 +167,7 @@ router.post('/', authenticateToken, listingValidation, (req, res) => {
       available_time_end || null
     );
 
-    const listing = db.prepare('SELECT * FROM listings WHERE id = ?').get(listingId);
+    const listing = await db.prepare('SELECT * FROM listings WHERE id = $1').get(listingId);
 
     res.status(201).json({ message: 'Listing created', listing });
   } catch (error) {
@@ -180,9 +177,9 @@ router.post('/', authenticateToken, listingValidation, (req, res) => {
 });
 
 // Update listing
-router.put('/:id', authenticateToken, (req, res) => {
+router.put('/:id', authenticateToken, async (req, res) => {
   try {
-    const listing = db.prepare('SELECT * FROM listings WHERE id = ?').get(req.params.id);
+    const listing = await db.prepare('SELECT * FROM listings WHERE id = $1').get(req.params.id);
 
     if (!listing) {
       return res.status(404).json({ error: 'Listing not found' });
@@ -204,22 +201,20 @@ router.put('/:id', authenticateToken, (req, res) => {
       status
     } = req.body;
 
-    const stmt = db.prepare(`
+    await db.prepare(`
       UPDATE listings
-      SET title = COALESCE(?, title),
-          description = COALESCE(?, description),
-          price = COALESCE(?, price),
-          quantity = COALESCE(?, quantity),
-          dining_hall = COALESCE(?, dining_hall),
-          available_date = COALESCE(?, available_date),
-          available_time_start = COALESCE(?, available_time_start),
-          available_time_end = COALESCE(?, available_time_end),
-          status = COALESCE(?, status),
+      SET title = COALESCE($1, title),
+          description = COALESCE($2, description),
+          price = COALESCE($3, price),
+          quantity = COALESCE($4, quantity),
+          dining_hall = COALESCE($5, dining_hall),
+          available_date = COALESCE($6, available_date),
+          available_time_start = COALESCE($7, available_time_start),
+          available_time_end = COALESCE($8, available_time_end),
+          status = COALESCE($9, status),
           updated_at = CURRENT_TIMESTAMP
-      WHERE id = ?
-    `);
-
-    stmt.run(
+      WHERE id = $10
+    `).run(
       title,
       description,
       price,
@@ -232,7 +227,7 @@ router.put('/:id', authenticateToken, (req, res) => {
       req.params.id
     );
 
-    const updatedListing = db.prepare('SELECT * FROM listings WHERE id = ?').get(req.params.id);
+    const updatedListing = await db.prepare('SELECT * FROM listings WHERE id = $1').get(req.params.id);
 
     res.json({ message: 'Listing updated', listing: updatedListing });
   } catch (error) {
@@ -242,9 +237,9 @@ router.put('/:id', authenticateToken, (req, res) => {
 });
 
 // Delete listing
-router.delete('/:id', authenticateToken, (req, res) => {
+router.delete('/:id', authenticateToken, async (req, res) => {
   try {
-    const listing = db.prepare('SELECT * FROM listings WHERE id = ?').get(req.params.id);
+    const listing = await db.prepare('SELECT * FROM listings WHERE id = $1').get(req.params.id);
 
     if (!listing) {
       return res.status(404).json({ error: 'Listing not found' });
@@ -255,7 +250,7 @@ router.delete('/:id', authenticateToken, (req, res) => {
     }
 
     // Soft delete by setting status to deleted
-    db.prepare('UPDATE listings SET status = ?, updated_at = CURRENT_TIMESTAMP WHERE id = ?')
+    await db.prepare('UPDATE listings SET status = $1, updated_at = CURRENT_TIMESTAMP WHERE id = $2')
       .run('deleted', req.params.id);
 
     res.json({ message: 'Listing deleted' });

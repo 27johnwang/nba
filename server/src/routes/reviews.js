@@ -7,13 +7,13 @@ import { reviewValidation } from '../middleware/validation.js';
 const router = express.Router();
 
 // Create review for a completed transaction
-router.post('/', authenticateToken, reviewValidation, (req, res) => {
+router.post('/', authenticateToken, reviewValidation, async (req, res) => {
   try {
     const { transaction_id, rating, comment } = req.body;
 
     // Get transaction
-    const transaction = db.prepare(`
-      SELECT * FROM transactions WHERE id = ? AND status = 'completed'
+    const transaction = await db.prepare(`
+      SELECT * FROM transactions WHERE id = $1 AND status = 'completed'
     `).get(transaction_id);
 
     if (!transaction) {
@@ -29,15 +29,13 @@ router.post('/', authenticateToken, reviewValidation, (req, res) => {
     }
 
     // Determine who is being reviewed and what type of review
-    // If buyer is reviewing, they're reviewing the seller (as a seller)
-    // If seller is reviewing, they're reviewing the buyer (as a buyer)
     const reviewed_user_id = isBuyer ? transaction.seller_id : transaction.buyer_id;
     const review_type = isBuyer ? 'seller' : 'buyer';
 
     // Check if already reviewed
-    const existingReview = db.prepare(`
+    const existingReview = await db.prepare(`
       SELECT id FROM reviews
-      WHERE transaction_id = ? AND reviewer_id = ?
+      WHERE transaction_id = $1 AND reviewer_id = $2
     `).get(transaction_id, req.user.id);
 
     if (existingReview) {
@@ -46,50 +44,50 @@ router.post('/', authenticateToken, reviewValidation, (req, res) => {
 
     const reviewId = uuidv4();
 
-    db.prepare(`
+    await db.prepare(`
       INSERT INTO reviews (id, transaction_id, reviewer_id, reviewed_user_id, review_type, rating, comment)
-      VALUES (?, ?, ?, ?, ?, ?, ?)
+      VALUES ($1, $2, $3, $4, $5, $6, $7)
     `).run(reviewId, transaction_id, req.user.id, reviewed_user_id, review_type, rating, comment || null);
 
     // Update user's role-specific rating
-    const ratingStats = db.prepare(`
+    const ratingStats = await db.prepare(`
       SELECT AVG(rating) as avg_rating, COUNT(*) as total
       FROM reviews
-      WHERE reviewed_user_id = ? AND review_type = ?
+      WHERE reviewed_user_id = $1 AND review_type = $2
     `).get(reviewed_user_id, review_type);
 
     if (review_type === 'seller') {
-      db.prepare(`
+      await db.prepare(`
         UPDATE users
-        SET seller_rating = ?, seller_reviews = ?
-        WHERE id = ?
+        SET seller_rating = $1, seller_reviews = $2
+        WHERE id = $3
       `).run(ratingStats.avg_rating || 0, ratingStats.total || 0, reviewed_user_id);
     } else {
-      db.prepare(`
+      await db.prepare(`
         UPDATE users
-        SET buyer_rating = ?, buyer_reviews = ?
-        WHERE id = ?
+        SET buyer_rating = $1, buyer_reviews = $2
+        WHERE id = $3
       `).run(ratingStats.avg_rating || 0, ratingStats.total || 0, reviewed_user_id);
     }
 
     // Also update overall rating
-    const overallStats = db.prepare(`
+    const overallStats = await db.prepare(`
       SELECT AVG(rating) as avg_rating, COUNT(*) as total
       FROM reviews
-      WHERE reviewed_user_id = ?
+      WHERE reviewed_user_id = $1
     `).get(reviewed_user_id);
 
-    db.prepare(`
+    await db.prepare(`
       UPDATE users
-      SET rating = ?, total_reviews = ?
-      WHERE id = ?
+      SET rating = $1, total_reviews = $2
+      WHERE id = $3
     `).run(overallStats.avg_rating || 0, overallStats.total || 0, reviewed_user_id);
 
-    const review = db.prepare(`
+    const review = await db.prepare(`
       SELECT r.*, u.name as reviewer_name
       FROM reviews r
       JOIN users u ON r.reviewer_id = u.id
-      WHERE r.id = ?
+      WHERE r.id = $1
     `).get(reviewId);
 
     res.status(201).json({ message: 'Review submitted', review });
@@ -100,22 +98,22 @@ router.post('/', authenticateToken, reviewValidation, (req, res) => {
 });
 
 // Get reviews for a user
-router.get('/user/:userId', (req, res) => {
+router.get('/user/:userId', async (req, res) => {
   try {
     const { userId } = req.params;
 
-    const reviews = db.prepare(`
+    const reviews = await db.prepare(`
       SELECT r.*, u.name as reviewer_name, t.id as transaction_id,
              l.title as listing_title
       FROM reviews r
       JOIN users u ON r.reviewer_id = u.id
       JOIN transactions t ON r.transaction_id = t.id
       JOIN listings l ON t.listing_id = l.id
-      WHERE r.reviewed_user_id = ?
+      WHERE r.reviewed_user_id = $1
       ORDER BY r.created_at DESC
     `).all(userId);
 
-    const stats = db.prepare(`
+    const stats = await db.prepare(`
       SELECT AVG(rating) as average, COUNT(*) as total,
              SUM(CASE WHEN rating = 5 THEN 1 ELSE 0 END) as five_star,
              SUM(CASE WHEN rating = 4 THEN 1 ELSE 0 END) as four_star,
@@ -123,7 +121,7 @@ router.get('/user/:userId', (req, res) => {
              SUM(CASE WHEN rating = 2 THEN 1 ELSE 0 END) as two_star,
              SUM(CASE WHEN rating = 1 THEN 1 ELSE 0 END) as one_star
       FROM reviews
-      WHERE reviewed_user_id = ?
+      WHERE reviewed_user_id = $1
     `).get(userId);
 
     res.json({ reviews, stats });
@@ -134,10 +132,10 @@ router.get('/user/:userId', (req, res) => {
 });
 
 // Check if user can review a transaction
-router.get('/can-review/:transactionId', authenticateToken, (req, res) => {
+router.get('/can-review/:transactionId', authenticateToken, async (req, res) => {
   try {
-    const transaction = db.prepare(`
-      SELECT * FROM transactions WHERE id = ? AND status = 'completed'
+    const transaction = await db.prepare(`
+      SELECT * FROM transactions WHERE id = $1 AND status = 'completed'
     `).get(req.params.transactionId);
 
     if (!transaction) {
@@ -148,8 +146,8 @@ router.get('/can-review/:transactionId', authenticateToken, (req, res) => {
       return res.json({ canReview: false, reason: 'Not part of this transaction' });
     }
 
-    const existingReview = db.prepare(`
-      SELECT id FROM reviews WHERE transaction_id = ? AND reviewer_id = ?
+    const existingReview = await db.prepare(`
+      SELECT id FROM reviews WHERE transaction_id = $1 AND reviewer_id = $2
     `).get(req.params.transactionId, req.user.id);
 
     if (existingReview) {

@@ -13,7 +13,7 @@ router.post('/register', registerValidation, async (req, res) => {
     const { email, password, name, phone, venmo_handle } = req.body;
 
     // Check if user already exists
-    const existingUser = db.prepare('SELECT id FROM users WHERE email = ?').get(email);
+    const existingUser = await db.prepare('SELECT id FROM users WHERE email = $1').get(email);
     if (existingUser) {
       return res.status(400).json({ error: 'User with this email already exists' });
     }
@@ -24,14 +24,13 @@ router.post('/register', registerValidation, async (req, res) => {
     const verificationToken = uuidv4();
 
     // Insert user
-    const stmt = db.prepare(`
+    await db.prepare(`
       INSERT INTO users (id, email, password, name, phone, venmo_handle, verification_token)
-      VALUES (?, ?, ?, ?, ?, ?, ?)
-    `);
-    stmt.run(userId, email, hashedPassword, name, phone || null, venmo_handle || null, verificationToken);
+      VALUES ($1, $2, $3, $4, $5, $6, $7)
+    `).run(userId, email, hashedPassword, name, phone || null, venmo_handle || null, verificationToken);
 
     // Get created user
-    const user = db.prepare('SELECT id, email, name, phone, venmo_handle, rating, seller_rating, seller_reviews, buyer_rating, buyer_reviews, created_at FROM users WHERE id = ?').get(userId);
+    const user = await db.prepare('SELECT id, email, name, phone, venmo_handle, rating, seller_rating, seller_reviews, buyer_rating, buyer_reviews, created_at FROM users WHERE id = $1').get(userId);
 
     const token = generateToken(user);
 
@@ -52,7 +51,7 @@ router.post('/login', loginValidation, async (req, res) => {
     const { email, password } = req.body;
 
     // Find user
-    const user = db.prepare('SELECT * FROM users WHERE email = ?').get(email);
+    const user = await db.prepare('SELECT * FROM users WHERE email = $1').get(email);
     if (!user) {
       return res.status(401).json({ error: 'Invalid email or password' });
     }
@@ -80,14 +79,14 @@ router.post('/login', loginValidation, async (req, res) => {
 });
 
 // Get current user
-router.get('/me', authenticateToken, (req, res) => {
+router.get('/me', authenticateToken, async (req, res) => {
   try {
-    const user = db.prepare(`
+    const user = await db.prepare(`
       SELECT id, email, name, phone, venmo_handle, profile_image,
              dining_hall_preference, rating, total_reviews,
              seller_rating, seller_reviews, buyer_rating, buyer_reviews,
              created_at, is_verified
-      FROM users WHERE id = ?
+      FROM users WHERE id = $1
     `).get(req.user.id);
 
     if (!user) {
@@ -102,12 +101,12 @@ router.get('/me', authenticateToken, (req, res) => {
 });
 
 // Get user by ID (public profile)
-router.get('/user/:id', authenticateToken, (req, res) => {
+router.get('/user/:id', authenticateToken, async (req, res) => {
   try {
-    const user = db.prepare(`
+    const user = await db.prepare(`
       SELECT id, name, profile_image, seller_rating, seller_reviews,
              buyer_rating, buyer_reviews, created_at
-      FROM users WHERE id = ?
+      FROM users WHERE id = $1
     `).get(req.params.id);
 
     if (!user) {
@@ -126,23 +125,22 @@ router.put('/profile', authenticateToken, async (req, res) => {
   try {
     const { name, phone, venmo_handle, dining_hall_preference } = req.body;
 
-    const stmt = db.prepare(`
+    await db.prepare(`
       UPDATE users
-      SET name = COALESCE(?, name),
-          phone = COALESCE(?, phone),
-          venmo_handle = COALESCE(?, venmo_handle),
-          dining_hall_preference = COALESCE(?, dining_hall_preference),
+      SET name = COALESCE($1, name),
+          phone = COALESCE($2, phone),
+          venmo_handle = COALESCE($3, venmo_handle),
+          dining_hall_preference = COALESCE($4, dining_hall_preference),
           updated_at = CURRENT_TIMESTAMP
-      WHERE id = ?
-    `);
-    stmt.run(name, phone, venmo_handle, dining_hall_preference, req.user.id);
+      WHERE id = $5
+    `).run(name, phone, venmo_handle, dining_hall_preference, req.user.id);
 
-    const user = db.prepare(`
+    const user = await db.prepare(`
       SELECT id, email, name, phone, venmo_handle, profile_image,
              dining_hall_preference, rating, total_reviews,
              seller_rating, seller_reviews, buyer_rating, buyer_reviews,
              created_at
-      FROM users WHERE id = ?
+      FROM users WHERE id = $1
     `).get(req.user.id);
 
     res.json({ message: 'Profile updated', user });
@@ -161,7 +159,7 @@ router.put('/password', authenticateToken, async (req, res) => {
       return res.status(400).json({ error: 'New password must be at least 6 characters' });
     }
 
-    const user = db.prepare('SELECT password FROM users WHERE id = ?').get(req.user.id);
+    const user = await db.prepare('SELECT password FROM users WHERE id = $1').get(req.user.id);
 
     const validPassword = await bcrypt.compare(currentPassword, user.password);
     if (!validPassword) {
@@ -169,7 +167,7 @@ router.put('/password', authenticateToken, async (req, res) => {
     }
 
     const hashedPassword = await bcrypt.hash(newPassword, 10);
-    db.prepare('UPDATE users SET password = ?, updated_at = CURRENT_TIMESTAMP WHERE id = ?')
+    await db.prepare('UPDATE users SET password = $1, updated_at = CURRENT_TIMESTAMP WHERE id = $2')
       .run(hashedPassword, req.user.id);
 
     res.json({ message: 'Password updated successfully' });
