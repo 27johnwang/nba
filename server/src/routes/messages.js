@@ -116,8 +116,7 @@ router.get('/conversations', authenticateToken, (req, res) => {
       )
       WHERE lm.rn = 1
       ORDER BY
-        CASE WHEN ac.archived_at IS NOT NULL THEN 0 ELSE 1 END,
-        ac.archived_at DESC,
+        CASE WHEN ac.archived_at IS NOT NULL THEN 1 ELSE 0 END,
         lm.created_at DESC
     `).all(
       req.user.id, req.user.id, req.user.id,

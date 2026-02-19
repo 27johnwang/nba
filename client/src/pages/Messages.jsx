@@ -3,7 +3,7 @@ import { useParams, Link, useSearchParams } from 'react-router-dom'
 import { useAuth } from '../context/AuthContext'
 import api from '../utils/api'
 import { format } from 'date-fns'
-import { Send, ArrowLeft, User, MessageSquare, Star, CheckCircle, Heart, XCircle, Archive } from 'lucide-react'
+import { Send, ArrowLeft, User, MessageSquare, Star, CheckCircle, Heart, XCircle, Archive, ChevronDown, ChevronRight } from 'lucide-react'
 
 const Messages = () => {
   const { userId } = useParams()
@@ -21,6 +21,7 @@ const Messages = () => {
   const [reviewModal, setReviewModal] = useState(null) // { transactionId, userName }
   const [reviewData, setReviewData] = useState({ rating: 5, comment: '' })
   const [reviewLoading, setReviewLoading] = useState(false)
+  const [showArchives, setShowArchives] = useState(false)
   const messagesEndRef = useRef(null)
 
   useEffect(() => {
@@ -298,60 +299,93 @@ const Messages = () => {
             </div>
           ) : (
             <div className="overflow-y-auto h-[calc(100%-60px)]">
-              {/* Archived section header */}
-              {conversations.some(c => c.is_archived) && (
-                <div className="px-4 py-2 bg-gray-100 border-b flex items-center">
-                  <Archive size={14} className="text-gray-500 mr-2" />
-                  <span className="text-xs font-medium text-gray-500 uppercase">Archived</span>
-                </div>
-              )}
-              {conversations.map((conv, index) => {
-                // Show "Active" header before first non-archived conversation
-                const showActiveHeader = !conv.is_archived &&
-                  (index === 0 || conversations[index - 1]?.is_archived)
-                return (
-                  <div key={`${conv.partner_id}-${conv.listing_id || 'no-listing'}`}>
-                    {showActiveHeader && conversations.some(c => c.is_archived) && (
-                      <div className="px-4 py-2 bg-gray-50 border-b flex items-center">
-                        <MessageSquare size={14} className="text-gray-500 mr-2" />
-                        <span className="text-xs font-medium text-gray-500 uppercase">Active</span>
+              {/* Active conversations */}
+              {conversations.filter(c => !c.is_archived).map((conv) => (
+                <button
+                  key={`${conv.partner_id}-${conv.listing_id || 'no-listing'}`}
+                  onClick={() => selectConversation(conv)}
+                  className={`w-full p-4 text-left hover:bg-gray-50 border-b transition-colors ${
+                    selectedUser?.id === conv.partner_id && selectedUser?.listing_id === conv.listing_id ? 'bg-purple-50' : ''
+                  }`}
+                >
+                  <div className="flex items-start">
+                    <div className="bg-nyu-violet text-white w-10 h-10 rounded-full flex items-center justify-center font-semibold flex-shrink-0">
+                      {conv.partner_name.charAt(0)}
+                    </div>
+                    <div className="ml-3 flex-1 min-w-0">
+                      <div className="flex justify-between items-start">
+                        <span className="font-medium text-gray-800 truncate">
+                          {conv.partner_name}
+                        </span>
+                        {conv.unread_count > 0 && (
+                          <span className="bg-nyu-violet text-white text-xs rounded-full px-2 py-0.5 ml-2">
+                            {conv.unread_count}
+                          </span>
+                        )}
                       </div>
+                      {conv.listing_dining_hall && (
+                        <p className="text-xs text-nyu-violet bg-purple-50 rounded px-2 py-0.5 mt-1 inline-block">
+                          {conv.listing_dining_hall} - ${conv.listing_price?.toFixed(2)}
+                        </p>
+                      )}
+                      <p className="text-sm text-gray-500 truncate mt-1">
+                        {conv.last_message}
+                      </p>
+                      <p className="text-xs text-gray-400 mt-1">
+                        {format(new Date(conv.last_message_at), 'MMM d, h:mm a')}
+                      </p>
+                    </div>
+                  </div>
+                </button>
+              ))}
+
+              {/* Archives section - collapsible */}
+              {conversations.some(c => c.is_archived) && (
+                <>
+                  <button
+                    onClick={() => setShowArchives(!showArchives)}
+                    className="w-full px-4 py-3 bg-gray-100 border-b flex items-center justify-between hover:bg-gray-150 transition-colors"
+                  >
+                    <div className="flex items-center">
+                      <Archive size={14} className="text-gray-500 mr-2" />
+                      <span className="text-sm font-medium text-gray-600">Archives</span>
+                      <span className="ml-2 text-xs text-gray-400">
+                        ({conversations.filter(c => c.is_archived).length})
+                      </span>
+                    </div>
+                    {showArchives ? (
+                      <ChevronDown size={16} className="text-gray-500" />
+                    ) : (
+                      <ChevronRight size={16} className="text-gray-500" />
                     )}
+                  </button>
+
+                  {showArchives && conversations.filter(c => c.is_archived).map((conv) => (
                     <button
+                      key={`${conv.partner_id}-${conv.listing_id || 'no-listing'}`}
                       onClick={() => selectConversation(conv)}
-                      className={`w-full p-4 text-left hover:bg-gray-50 border-b transition-colors ${
+                      className={`w-full p-4 text-left hover:bg-gray-100 border-b transition-colors bg-gray-50 ${
                         selectedUser?.id === conv.partner_id && selectedUser?.listing_id === conv.listing_id ? 'bg-purple-50' : ''
-                      } ${conv.is_archived ? 'bg-gray-50' : ''}`}
+                      }`}
                     >
                       <div className="flex items-start">
-                        <div className={`w-10 h-10 rounded-full flex items-center justify-center font-semibold flex-shrink-0 ${
-                          conv.is_archived ? 'bg-gray-400 text-white' : 'bg-nyu-violet text-white'
-                        }`}>
+                        <div className="bg-gray-400 text-white w-10 h-10 rounded-full flex items-center justify-center font-semibold flex-shrink-0">
                           {conv.partner_name.charAt(0)}
                         </div>
                         <div className="ml-3 flex-1 min-w-0">
                           <div className="flex justify-between items-start">
                             <div className="flex items-center gap-2">
-                              <span className={`font-medium truncate ${conv.is_archived ? 'text-gray-500' : 'text-gray-800'}`}>
+                              <span className="font-medium text-gray-500 truncate">
                                 {conv.partner_name}
                               </span>
-                              {conv.is_archived && (
-                                <span className="bg-gray-200 text-gray-600 text-xs px-1.5 py-0.5 rounded flex items-center">
-                                  <Archive size={10} className="mr-1" />
-                                  Done
-                                </span>
-                              )}
-                            </div>
-                            {conv.unread_count > 0 && (
-                              <span className="bg-nyu-violet text-white text-xs rounded-full px-2 py-0.5 ml-2">
-                                {conv.unread_count}
+                              <span className="bg-gray-200 text-gray-600 text-xs px-1.5 py-0.5 rounded flex items-center">
+                                <Archive size={10} className="mr-1" />
+                                Done
                               </span>
-                            )}
+                            </div>
                           </div>
                           {conv.listing_dining_hall && (
-                            <p className={`text-xs rounded px-2 py-0.5 mt-1 inline-block ${
-                              conv.is_archived ? 'text-gray-500 bg-gray-100' : 'text-nyu-violet bg-purple-50'
-                            }`}>
+                            <p className="text-xs text-gray-500 bg-gray-100 rounded px-2 py-0.5 mt-1 inline-block">
                               {conv.listing_dining_hall} - ${conv.listing_price?.toFixed(2)}
                             </p>
                           )}
@@ -364,9 +398,20 @@ const Messages = () => {
                         </div>
                       </div>
                     </button>
-                  </div>
-                )
-              })}
+                  ))}
+                </>
+              )}
+
+              {/* Empty state when no active conversations */}
+              {conversations.filter(c => !c.is_archived).length === 0 && (
+                <div className="p-6 text-center">
+                  <MessageSquare size={48} className="mx-auto text-gray-300 mb-3" />
+                  <p className="text-gray-500">No active conversations</p>
+                  <p className="text-sm text-gray-400 mt-1">
+                    Check archives or start a new conversation
+                  </p>
+                </div>
+              )}
             </div>
           )}
         </div>
