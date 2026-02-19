@@ -326,7 +326,7 @@ const ListingDetail = () => {
                           </div>
                           {tx.status === 'confirmed' && (
                             <span className="text-xs font-medium text-green-600 bg-green-100 px-2 py-1 rounded">
-                              Confirmed
+                              Interested
                             </span>
                           )}
                         </div>
@@ -344,7 +344,7 @@ const ListingDetail = () => {
                                 className="flex-1 btn-primary text-sm py-1.5 flex items-center justify-center"
                               >
                                 <CheckCircle size={14} className="mr-1" />
-                                {actionLoading === tx.id ? '...' : 'Confirm'}
+                                {actionLoading === tx.id ? '...' : 'Mark Interest'}
                               </button>
                               <button
                                 onClick={() => handleCancelTransaction(tx.id)}
@@ -361,7 +361,7 @@ const ListingDetail = () => {
                               disabled={actionLoading === tx.id}
                               className="flex-1 btn-primary text-sm py-1.5 bg-green-600 hover:bg-green-700"
                             >
-                              {actionLoading === tx.id ? '...' : 'Mark Complete'}
+                              {actionLoading === tx.id ? '...' : 'Confirm Transaction'}
                             </button>
                           )}
                           <Link

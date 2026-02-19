@@ -26,9 +26,12 @@ router.get('/dining-halls', (req, res) => {
 router.get('/user/me', authenticateToken, (req, res) => {
   try {
     const listings = db.prepare(`
-      SELECT * FROM listings
-      WHERE seller_id = ? AND status != 'deleted'
-      ORDER BY created_at DESC
+      SELECT l.*,
+        (SELECT COUNT(*) FROM transactions t WHERE t.listing_id = l.id AND t.status = 'pending') as pending_count,
+        (SELECT COUNT(*) FROM transactions t WHERE t.listing_id = l.id AND t.status = 'confirmed') as confirmed_count
+      FROM listings l
+      WHERE l.seller_id = ? AND l.status != 'deleted'
+      ORDER BY l.created_at DESC
     `).all(req.user.id);
 
     res.json({ listings });
