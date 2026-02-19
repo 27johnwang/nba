@@ -278,6 +278,7 @@ const Layout = () => {
               ) : (
                 <Link to="/register" className="hover:text-white">Sign Up</Link>
               )}
+              <Link to="/contact" className="hover:text-white">Contact</Link>
             </div>
           </div>
           <div className="mt-6 pt-6 border-t border-gray-700 text-center text-sm">

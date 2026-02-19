@@ -13,6 +13,7 @@ import Profile from './pages/Profile'
 import MyListings from './pages/MyListings'
 import Transactions from './pages/Transactions'
 import UserProfile from './pages/UserProfile'
+import Contact from './pages/Contact'
 
 const ProtectedRoute = ({ children }) => {
   const { isAuthenticated, loading } = useAuth()
@@ -49,6 +50,7 @@ const App = () => {
         <Route path="login" element={<Login />} />
         <Route path="register" element={<Register />} />
         <Route path="listings" element={<Listings />} />
+        <Route path="contact" element={<Contact />} />
         <Route
           path="listings/new"
           element={

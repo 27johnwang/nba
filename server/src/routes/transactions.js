@@ -286,6 +286,19 @@ router.put('/:id/status', authenticateToken, async (req, res) => {
           `).run(archiveId, transaction.seller_id, transaction.buyer_id);
         }
 
+        // Archive the conversation for the buyer as well
+        const existingBuyerArchive = await db.prepare(`
+          SELECT id FROM archived_conversations WHERE user_id = $1 AND partner_id = $2
+        `).get(transaction.buyer_id, transaction.seller_id);
+
+        if (!existingBuyerArchive) {
+          const buyerArchiveId = uuidv4();
+          await db.prepare(`
+            INSERT INTO archived_conversations (id, user_id, partner_id, listing_id)
+            VALUES ($1, $2, $3, NULL)
+          `).run(buyerArchiveId, transaction.buyer_id, transaction.seller_id);
+        }
+
         // Archive conversations with rejected buyers (for seller)
         for (const tx of otherTransactions) {
           const existingRejectedArchive = await db.prepare(`
@@ -321,6 +334,19 @@ router.put('/:id/status', authenticateToken, async (req, res) => {
           INSERT INTO archived_conversations (id, user_id, partner_id, listing_id)
           VALUES ($1, $2, $3, NULL)
         `).run(archiveId, transaction.seller_id, transaction.buyer_id);
+      }
+
+      // Archive conversation for the buyer as well
+      const existingBuyerArchive = await db.prepare(`
+        SELECT id FROM archived_conversations WHERE user_id = $1 AND partner_id = $2
+      `).get(transaction.buyer_id, transaction.seller_id);
+
+      if (!existingBuyerArchive) {
+        const buyerArchiveId = uuidv4();
+        await db.prepare(`
+          INSERT INTO archived_conversations (id, user_id, partner_id, listing_id)
+          VALUES ($1, $2, $3, NULL)
+        `).run(buyerArchiveId, transaction.buyer_id, transaction.seller_id);
       }
     } else {
       await db.prepare('UPDATE transactions SET status = $1 WHERE id = $2').run(status, req.params.id);
