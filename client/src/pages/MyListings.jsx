@@ -398,23 +398,6 @@ const MyListings = () => {
                           ${listing.price.toFixed(2)} × {listing.quantity} swipes
                         </div>
                       </div>
-
-                      {(listing.pending_count > 0 || listing.confirmed_count > 0) && (
-                        <div className="mt-4 flex gap-3">
-                          {listing.confirmed_count > 0 && (
-                            <span className="inline-flex items-center bg-green-100 text-green-700 text-sm px-3 py-1 rounded-full">
-                              <CheckCircle size={14} className="mr-1" />
-                              {listing.confirmed_count} confirmed
-                            </span>
-                          )}
-                          {listing.pending_count > 0 && (
-                            <span className="inline-flex items-center bg-orange-100 text-orange-700 text-sm px-3 py-1 rounded-full">
-                              <Users size={14} className="mr-1" />
-                              {listing.pending_count} pending
-                            </span>
-                          )}
-                        </div>
-                      )}
                     </div>
 
                     <div className="flex items-center mt-4 md:mt-0 md:ml-6">
