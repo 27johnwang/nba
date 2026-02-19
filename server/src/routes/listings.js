@@ -73,11 +73,7 @@ router.get('/', optionalAuth, (req, res) => {
       params.push(parseFloat(max_price));
     }
 
-    // Exclude current user's own listings if authenticated
-    if (req.user) {
-      query += ' AND l.seller_id != ?';
-      params.push(req.user.id);
-    }
+    // Note: Showing all listings including user's own so they can see their listing after creation
 
     // Sorting
     switch (sort) {
