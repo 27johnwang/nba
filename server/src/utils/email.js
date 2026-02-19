@@ -1,34 +1,18 @@
-import nodemailer from 'nodemailer';
+import { Resend } from 'resend';
 
-// Create transporter on demand (lazy initialization)
-let transporter = null;
+// Initialize Resend client
+let resend = null;
 
-const getTransporter = () => {
-  if (transporter) return transporter;
+const getResend = () => {
+  if (resend) return resend;
 
-  // For production, use SMTP settings from environment
-  if (process.env.SMTP_HOST) {
-    console.log('Creating SMTP transporter with:', {
-      host: process.env.SMTP_HOST,
-      port: process.env.SMTP_PORT,
-      user: process.env.SMTP_USER,
-      from: process.env.SMTP_FROM
-    });
-
-    transporter = nodemailer.createTransport({
-      host: process.env.SMTP_HOST,
-      port: parseInt(process.env.SMTP_PORT) || 587,
-      secure: process.env.SMTP_SECURE === 'true',
-      auth: {
-        user: process.env.SMTP_USER,
-        pass: process.env.SMTP_PASS
-      }
-    });
-    return transporter;
+  if (process.env.RESEND_API_KEY) {
+    console.log('Initializing Resend email service');
+    resend = new Resend(process.env.RESEND_API_KEY);
+    return resend;
   }
 
-  // For development/testing, log emails to console
-  console.log('No SMTP configured - emails will be logged to console');
+  console.log('No RESEND_API_KEY configured - emails will be logged to console');
   return null;
 };
 
@@ -39,8 +23,10 @@ export const generateVerificationCode = () => {
 
 // Send verification email
 export const sendVerificationEmail = async (email, code, name) => {
-  const mailOptions = {
-    from: process.env.SMTP_FROM || 'NYU Mealswipe Marketplace <noreply@nyumealswipe.com>',
+  const client = getResend();
+
+  const emailContent = {
+    from: process.env.EMAIL_FROM || 'NYU Mealswipe <onboarding@resend.dev>',
     to: email,
     subject: 'Verify your NYU Mealswipe account',
     html: `
@@ -59,11 +45,13 @@ export const sendVerificationEmail = async (email, code, name) => {
     `
   };
 
-  const smtp = getTransporter();
-  if (smtp) {
+  if (client) {
     try {
-      const result = await smtp.sendMail(mailOptions);
+      const result = await client.emails.send(emailContent);
       console.log(`Verification email sent to ${email}`, result);
+      if (result.error) {
+        throw new Error(result.error.message);
+      }
     } catch (error) {
       console.error('Failed to send verification email:', error.message);
       throw new Error(`Email failed: ${error.message}`);
@@ -79,8 +67,10 @@ export const sendVerificationEmail = async (email, code, name) => {
 
 // Send password reset email
 export const sendPasswordResetEmail = async (email, code, name) => {
-  const mailOptions = {
-    from: process.env.SMTP_FROM || 'NYU Mealswipe Marketplace <noreply@nyumealswipe.com>',
+  const client = getResend();
+
+  const emailContent = {
+    from: process.env.EMAIL_FROM || 'NYU Mealswipe <onboarding@resend.dev>',
     to: email,
     subject: 'Reset your NYU Mealswipe password',
     html: `
@@ -99,11 +89,13 @@ export const sendPasswordResetEmail = async (email, code, name) => {
     `
   };
 
-  const smtp = getTransporter();
-  if (smtp) {
+  if (client) {
     try {
-      const result = await smtp.sendMail(mailOptions);
+      const result = await client.emails.send(emailContent);
       console.log(`Password reset email sent to ${email}`, result);
+      if (result.error) {
+        throw new Error(result.error.message);
+      }
     } catch (error) {
       console.error('Failed to send password reset email:', error.message);
       throw new Error(`Email failed: ${error.message}`);
