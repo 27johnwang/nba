@@ -23,8 +23,30 @@ export const createTables = async (pool) => {
         created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
         updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
         is_verified INTEGER DEFAULT 0,
-        verification_token TEXT
+        verification_code TEXT,
+        verification_code_expires TIMESTAMP,
+        password_reset_code TEXT,
+        password_reset_expires TIMESTAMP
       )
+    `);
+
+    // Add new columns if they don't exist (for existing databases)
+    await client.query(`
+      DO $$
+      BEGIN
+        IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name='users' AND column_name='verification_code') THEN
+          ALTER TABLE users ADD COLUMN verification_code TEXT;
+        END IF;
+        IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name='users' AND column_name='verification_code_expires') THEN
+          ALTER TABLE users ADD COLUMN verification_code_expires TIMESTAMP;
+        END IF;
+        IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name='users' AND column_name='password_reset_code') THEN
+          ALTER TABLE users ADD COLUMN password_reset_code TEXT;
+        END IF;
+        IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name='users' AND column_name='password_reset_expires') THEN
+          ALTER TABLE users ADD COLUMN password_reset_expires TIMESTAMP;
+        END IF;
+      END $$;
     `);
 
     // Listings table

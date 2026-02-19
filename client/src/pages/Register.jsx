@@ -1,9 +1,10 @@
 import { useState } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
 import { useAuth } from '../context/AuthContext'
-import { Mail, Lock, User, Phone, DollarSign, AlertCircle, CheckCircle } from 'lucide-react'
+import { Mail, Lock, User, Phone, DollarSign, AlertCircle, CheckCircle, ArrowLeft, RefreshCw } from 'lucide-react'
 
 const Register = () => {
+  const [step, setStep] = useState('register') // 'register' or 'verify'
   const [formData, setFormData] = useState({
     email: '',
     password: '',
@@ -12,9 +13,12 @@ const Register = () => {
     phone: '',
     venmo_handle: ''
   })
+  const [verificationCode, setVerificationCode] = useState('')
   const [error, setError] = useState('')
   const [loading, setLoading] = useState(false)
-  const { register } = useAuth()
+  const [resendLoading, setResendLoading] = useState(false)
+  const [resendSuccess, setResendSuccess] = useState(false)
+  const { register, verifyEmail, resendVerification } = useAuth()
   const navigate = useNavigate()
 
   const handleChange = (e) => {
@@ -39,13 +43,137 @@ const Register = () => {
 
     try {
       const { confirmPassword, ...registerData } = formData
-      await register(registerData)
+      const result = await register(registerData)
+
+      if (result.requiresVerification) {
+        setStep('verify')
+      } else {
+        navigate('/dashboard')
+      }
+    } catch (err) {
+      setError(err.message)
+    } finally {
+      setLoading(false)
+    }
+  }
+
+  const handleVerify = async (e) => {
+    e.preventDefault()
+    setError('')
+    setLoading(true)
+
+    try {
+      await verifyEmail(formData.email, verificationCode)
       navigate('/dashboard')
     } catch (err) {
       setError(err.message)
     } finally {
       setLoading(false)
     }
+  }
+
+  const handleResend = async () => {
+    setResendLoading(true)
+    setResendSuccess(false)
+    setError('')
+
+    try {
+      await resendVerification(formData.email)
+      setResendSuccess(true)
+    } catch (err) {
+      setError(err.message)
+    } finally {
+      setResendLoading(false)
+    }
+  }
+
+  if (step === 'verify') {
+    return (
+      <div className="max-w-md mx-auto">
+        <div className="bg-white rounded-xl shadow-lg p-8">
+          <button
+            onClick={() => setStep('register')}
+            className="flex items-center text-gray-600 hover:text-gray-800 mb-4"
+          >
+            <ArrowLeft size={20} className="mr-1" />
+            Back
+          </button>
+
+          <div className="text-center mb-8">
+            <div className="bg-purple-100 w-16 h-16 rounded-full flex items-center justify-center mx-auto mb-4">
+              <Mail className="text-nyu-violet" size={32} />
+            </div>
+            <h1 className="text-2xl font-bold text-gray-800">Verify Your Email</h1>
+            <p className="text-gray-600 mt-2">
+              We sent a 6-digit code to<br />
+              <span className="font-medium">{formData.email}</span>
+            </p>
+          </div>
+
+          {error && (
+            <div className="bg-red-50 border border-red-200 text-red-600 px-4 py-3 rounded-lg mb-6 flex items-center">
+              <AlertCircle size={20} className="mr-2 flex-shrink-0" />
+              <span>{error}</span>
+            </div>
+          )}
+
+          {resendSuccess && (
+            <div className="bg-green-50 border border-green-200 text-green-600 px-4 py-3 rounded-lg mb-6 flex items-center">
+              <CheckCircle size={20} className="mr-2 flex-shrink-0" />
+              <span>Verification code resent!</span>
+            </div>
+          )}
+
+          <form onSubmit={handleVerify} className="space-y-6">
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-2">
+                Verification Code
+              </label>
+              <input
+                type="text"
+                value={verificationCode}
+                onChange={(e) => setVerificationCode(e.target.value.replace(/\D/g, '').slice(0, 6))}
+                placeholder="Enter 6-digit code"
+                className="input-field text-center text-2xl tracking-widest"
+                maxLength={6}
+                required
+              />
+            </div>
+
+            <button
+              type="submit"
+              disabled={loading || verificationCode.length !== 6}
+              className="w-full btn-primary py-3 disabled:opacity-50 disabled:cursor-not-allowed"
+            >
+              {loading ? 'Verifying...' : 'Verify Email'}
+            </button>
+          </form>
+
+          <div className="mt-6 text-center">
+            <p className="text-gray-600 text-sm">
+              Didn't receive the code?{' '}
+              <button
+                onClick={handleResend}
+                disabled={resendLoading}
+                className="text-nyu-violet hover:underline font-medium inline-flex items-center disabled:opacity-50"
+              >
+                {resendLoading ? (
+                  <>
+                    <RefreshCw size={14} className="mr-1 animate-spin" />
+                    Sending...
+                  </>
+                ) : (
+                  'Resend Code'
+                )}
+              </button>
+            </p>
+            <p className="text-gray-500 text-xs mt-2">
+              Code expires in 15 minutes
+            </p>
+          </div>
+        </div>
+      </div>
+    )
   }
 
   return (

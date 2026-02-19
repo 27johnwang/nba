@@ -40,11 +40,24 @@ export const AuthProvider = ({ children }) => {
     try {
       setError(null)
       const response = await api.post('/auth/login', { email, password })
+
+      // Check if verification is required
+      if (response.data.requiresVerification) {
+        return { requiresVerification: true, email: response.data.email }
+      }
+
       localStorage.setItem('token', response.data.token)
       setUser(response.data.user)
       return response.data
     } catch (err) {
       const message = err.response?.data?.error || 'Login failed'
+      const requiresVerification = err.response?.data?.requiresVerification
+      const errorEmail = err.response?.data?.email
+
+      if (requiresVerification) {
+        return { requiresVerification: true, email: errorEmail, error: message }
+      }
+
       setError(message)
       throw new Error(message)
     }
@@ -54,12 +67,88 @@ export const AuthProvider = ({ children }) => {
     try {
       setError(null)
       const response = await api.post('/auth/register', userData)
-      localStorage.setItem('token', response.data.token)
-      setUser(response.data.user)
+
+      // Registration now requires verification
+      if (response.data.requiresVerification) {
+        return { requiresVerification: true, email: response.data.email }
+      }
+
+      // If somehow already verified (shouldn't happen with new flow)
+      if (response.data.token) {
+        localStorage.setItem('token', response.data.token)
+        setUser(response.data.user)
+      }
+
       return response.data
     } catch (err) {
       const message = err.response?.data?.error || err.response?.data?.errors?.[0]?.msg || 'Registration failed'
       setError(message)
+      throw new Error(message)
+    }
+  }
+
+  const verifyEmail = async (email, code) => {
+    try {
+      setError(null)
+      const response = await api.post('/auth/verify-email', { email, code })
+      localStorage.setItem('token', response.data.token)
+      setUser(response.data.user)
+      return response.data
+    } catch (err) {
+      const message = err.response?.data?.error || 'Verification failed'
+      setError(message)
+      throw new Error(message)
+    }
+  }
+
+  const resendVerification = async (email) => {
+    try {
+      const response = await api.post('/auth/resend-verification', { email })
+      return response.data
+    } catch (err) {
+      const message = err.response?.data?.error || 'Failed to resend code'
+      throw new Error(message)
+    }
+  }
+
+  const forgotPassword = async (email) => {
+    try {
+      const response = await api.post('/auth/forgot-password', { email })
+      return response.data
+    } catch (err) {
+      const message = err.response?.data?.error || 'Failed to process request'
+      throw new Error(message)
+    }
+  }
+
+  const verifyResetCode = async (email, code) => {
+    try {
+      const response = await api.post('/auth/verify-reset-code', { email, code })
+      return response.data
+    } catch (err) {
+      const message = err.response?.data?.error || 'Invalid code'
+      throw new Error(message)
+    }
+  }
+
+  const resetPassword = async (email, code, newPassword) => {
+    try {
+      const response = await api.post('/auth/reset-password', { email, code, newPassword })
+      return response.data
+    } catch (err) {
+      const message = err.response?.data?.error || 'Failed to reset password'
+      throw new Error(message)
+    }
+  }
+
+  const deleteAccount = async (password) => {
+    try {
+      const response = await api.delete('/auth/account', { data: { password } })
+      localStorage.removeItem('token')
+      setUser(null)
+      return response.data
+    } catch (err) {
+      const message = err.response?.data?.error || 'Failed to delete account'
       throw new Error(message)
     }
   }
@@ -86,6 +175,12 @@ export const AuthProvider = ({ children }) => {
     error,
     login,
     register,
+    verifyEmail,
+    resendVerification,
+    forgotPassword,
+    verifyResetCode,
+    resetPassword,
+    deleteAccount,
     logout,
     updateProfile,
     isAuthenticated: !!user

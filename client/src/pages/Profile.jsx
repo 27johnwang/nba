@@ -1,4 +1,5 @@
 import { useState } from 'react'
+import { useNavigate } from 'react-router-dom'
 import { useAuth } from '../context/AuthContext'
 import {
   User,
@@ -9,7 +10,9 @@ import {
   Star,
   Save,
   CheckCircle,
-  AlertCircle
+  AlertCircle,
+  Trash2,
+  Lock
 } from 'lucide-react'
 
 const DINING_HALLS = [
@@ -23,7 +26,8 @@ const DINING_HALLS = [
 ]
 
 const Profile = () => {
-  const { user, updateProfile } = useAuth()
+  const { user, updateProfile, deleteAccount } = useAuth()
+  const navigate = useNavigate()
   const [loading, setLoading] = useState(false)
   const [success, setSuccess] = useState(false)
   const [error, setError] = useState('')
@@ -34,6 +38,12 @@ const Profile = () => {
     venmo_handle: user?.venmo_handle || '',
     dining_hall_preference: user?.dining_hall_preference || ''
   })
+
+  // Delete account state
+  const [showDeleteModal, setShowDeleteModal] = useState(false)
+  const [deletePassword, setDeletePassword] = useState('')
+  const [deleteLoading, setDeleteLoading] = useState(false)
+  const [deleteError, setDeleteError] = useState('')
 
   const handleChange = (e) => {
     setFormData({ ...formData, [e.target.name]: e.target.value })
@@ -52,6 +62,25 @@ const Profile = () => {
       setError(err.message)
     } finally {
       setLoading(false)
+    }
+  }
+
+  const handleDeleteAccount = async () => {
+    if (!deletePassword) {
+      setDeleteError('Password is required')
+      return
+    }
+
+    setDeleteLoading(true)
+    setDeleteError('')
+
+    try {
+      await deleteAccount(deletePassword)
+      navigate('/')
+    } catch (err) {
+      setDeleteError(err.message)
+    } finally {
+      setDeleteLoading(false)
     }
   }
 
@@ -213,7 +242,7 @@ const Profile = () => {
       </div>
 
       {/* Account Info */}
-      <div className="bg-white rounded-xl shadow-md p-6">
+      <div className="bg-white rounded-xl shadow-md p-6 mb-6">
         <h3 className="font-semibold text-gray-800 mb-4">Account Information</h3>
         <div className="space-y-3 text-sm">
           <div className="flex justify-between">
@@ -237,10 +266,80 @@ const Profile = () => {
           </div>
           <div className="flex justify-between">
             <span className="text-gray-500">Account status</span>
-            <span className="text-green-600 font-medium">Active</span>
+            <span className="text-green-600 font-medium">Verified</span>
           </div>
         </div>
       </div>
+
+      {/* Danger Zone */}
+      <div className="bg-white rounded-xl shadow-md p-6 border border-red-200">
+        <h3 className="font-semibold text-red-600 mb-4">Danger Zone</h3>
+        <p className="text-sm text-gray-600 mb-4">
+          Once you delete your account, there is no going back. Please be certain.
+        </p>
+        <button
+          onClick={() => setShowDeleteModal(true)}
+          className="flex items-center px-4 py-2 border border-red-300 text-red-600 rounded-lg hover:bg-red-50 transition-colors"
+        >
+          <Trash2 size={18} className="mr-2" />
+          Delete Account
+        </button>
+      </div>
+
+      {/* Delete Account Modal */}
+      {showDeleteModal && (
+        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
+          <div className="bg-white rounded-xl p-6 max-w-md w-full">
+            <h3 className="text-xl font-bold text-gray-800 mb-2">Delete Account</h3>
+            <p className="text-gray-600 mb-4">
+              This action cannot be undone. This will permanently delete your account and remove your data.
+            </p>
+
+            {deleteError && (
+              <div className="bg-red-50 border border-red-200 text-red-600 px-4 py-3 rounded-lg mb-4 flex items-center">
+                <AlertCircle size={20} className="mr-2 flex-shrink-0" />
+                <span>{deleteError}</span>
+              </div>
+            )}
+
+            <div className="mb-4">
+              <label className="block text-sm font-medium text-gray-700 mb-2">
+                Enter your password to confirm
+              </label>
+              <div className="relative">
+                <Lock className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" size={20} />
+                <input
+                  type="password"
+                  value={deletePassword}
+                  onChange={(e) => setDeletePassword(e.target.value)}
+                  placeholder="Your password"
+                  className="input-field pl-10"
+                />
+              </div>
+            </div>
+
+            <div className="flex gap-3">
+              <button
+                onClick={() => {
+                  setShowDeleteModal(false)
+                  setDeletePassword('')
+                  setDeleteError('')
+                }}
+                className="flex-1 px-4 py-2 border border-gray-300 rounded-lg hover:bg-gray-50 transition-colors"
+              >
+                Cancel
+              </button>
+              <button
+                onClick={handleDeleteAccount}
+                disabled={deleteLoading || !deletePassword}
+                className="flex-1 px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 transition-colors disabled:opacity-50"
+              >
+                {deleteLoading ? 'Deleting...' : 'Delete Account'}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   )
 }
