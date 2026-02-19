@@ -41,12 +41,28 @@ const Dashboard = () => {
       const listings = listingsRes.data.listings
       const transactions = transactionsRes.data.transactions
 
+      // Check when user last visited transactions page
+      const lastVisit = localStorage.getItem('lastTransactionsVisit')
+      const lastVisitTime = lastVisit ? parseInt(lastVisit) : 0
+
+      // Only show pending reviews notification if there are unreviewed transactions
+      // completed after the user's last visit to the transactions page
+      const newPendingReviews = transactions.filter(t => {
+        if (t.status !== 'completed' || t.has_reviewed) return false
+        // If completed_at exists and is after last visit, it's new
+        if (t.completed_at) {
+          const completedTime = new Date(t.completed_at).getTime()
+          return completedTime > lastVisitTime
+        }
+        return !lastVisit // If no last visit, show all
+      }).length
+
       setStats({
         activeListings: listings.filter(l => l.status === 'active').length,
         pendingTransactions: transactions.filter(t => t.status === 'pending' || t.status === 'confirmed').length,
         completedTransactions: transactions.filter(t => t.status === 'completed').length,
         unreadMessages: messagesRes.data.unreadCount,
-        pendingReviews: transactions.filter(t => t.status === 'completed' && !t.has_reviewed).length
+        pendingReviews: newPendingReviews
       })
 
       setRecentListings(listings.slice(0, 3))

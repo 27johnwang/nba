@@ -18,6 +18,9 @@ const Messages = () => {
   const [transaction, setTransaction] = useState(null)
   const [actionLoading, setActionLoading] = useState(false)
   const [rejectConfirm, setRejectConfirm] = useState(false)
+  const [reviewModal, setReviewModal] = useState(null) // { transactionId, userName }
+  const [reviewData, setReviewData] = useState({ rating: 5, comment: '' })
+  const [reviewLoading, setReviewLoading] = useState(false)
   const messagesEndRef = useRef(null)
 
   useEffect(() => {
@@ -197,14 +200,37 @@ const Messages = () => {
 
   const handleCompleteTrade = async () => {
     if (!transaction) return
+    const userName = selectedUser?.name || 'the user'
+    const txId = transaction.id
+
     setActionLoading(true)
     try {
       await api.put(`/transactions/${transaction.id}/status`, { status: 'completed' })
       setTransaction(null)
+      // Show review modal after successful completion
+      setReviewModal({ transactionId: txId, userName })
     } catch (err) {
       console.error('Failed to complete trade:', err)
     } finally {
       setActionLoading(false)
+    }
+  }
+
+  const handleReviewSubmit = async () => {
+    if (!reviewModal) return
+    setReviewLoading(true)
+    try {
+      await api.post('/reviews', {
+        transaction_id: reviewModal.transactionId,
+        rating: reviewData.rating,
+        comment: reviewData.comment
+      })
+      setReviewModal(null)
+      setReviewData({ rating: 5, comment: '' })
+    } catch (err) {
+      console.error('Failed to submit review:', err)
+    } finally {
+      setReviewLoading(false)
     }
   }
 
@@ -495,6 +521,69 @@ const Messages = () => {
                 className="bg-red-500 hover:bg-red-600 text-white font-medium py-2 px-4 rounded-lg flex-1"
               >
                 {actionLoading ? 'Rejecting...' : 'Reject'}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Review Modal */}
+      {reviewModal && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
+          <div className="bg-white rounded-xl max-w-md w-full p-6">
+            <h2 className="text-xl font-bold text-gray-800 mb-4">Leave a Review</h2>
+            <p className="text-gray-600 mb-4">
+              How was your experience with <span className="font-semibold">{reviewModal.userName}</span>?
+            </p>
+
+            <div className="mb-4">
+              <label className="block text-sm font-medium text-gray-700 mb-2">Rating</label>
+              <div className="flex gap-2">
+                {[1, 2, 3, 4, 5].map((star) => (
+                  <button
+                    key={star}
+                    onClick={() => setReviewData({ ...reviewData, rating: star })}
+                    className="p-1"
+                  >
+                    <Star
+                      size={32}
+                      className={star <= reviewData.rating ? 'text-yellow-500' : 'text-gray-300'}
+                      fill={star <= reviewData.rating ? 'currentColor' : 'none'}
+                    />
+                  </button>
+                ))}
+              </div>
+            </div>
+
+            <div className="mb-6">
+              <label className="block text-sm font-medium text-gray-700 mb-2">
+                Comment (optional)
+              </label>
+              <textarea
+                value={reviewData.comment}
+                onChange={(e) => setReviewData({ ...reviewData, comment: e.target.value })}
+                className="input-field"
+                rows={3}
+                placeholder="Share your experience..."
+              />
+            </div>
+
+            <div className="flex gap-3">
+              <button
+                onClick={() => {
+                  setReviewModal(null)
+                  setReviewData({ rating: 5, comment: '' })
+                }}
+                className="btn-secondary flex-1"
+              >
+                Skip
+              </button>
+              <button
+                onClick={handleReviewSubmit}
+                disabled={reviewLoading}
+                className="btn-primary flex-1"
+              >
+                {reviewLoading ? 'Submitting...' : 'Submit Review'}
               </button>
             </div>
           </div>

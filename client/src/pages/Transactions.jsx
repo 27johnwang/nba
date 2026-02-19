@@ -29,6 +29,8 @@ const Transactions = () => {
 
   useEffect(() => {
     fetchTransactions()
+    // Mark that user has visited transactions page (clears the dashboard notification)
+    localStorage.setItem('lastTransactionsVisit', Date.now().toString())
   }, [filter])
 
   const fetchTransactions = async () => {
