@@ -13,7 +13,7 @@ const sendBrevoEmail = async (to, subject, htmlContent) => {
       'content-type': 'application/json'
     },
     body: JSON.stringify({
-      sender: { name: 'NYU Mealswipe', email: 'noreply@nyumealswipe.com' },
+      sender: { name: 'NYU Mealswipe', email: process.env.BREVO_SENDER_EMAIL || 'noreply@nyumealswipe.com' },
       to: [{ email: to }],
       subject,
       htmlContent
