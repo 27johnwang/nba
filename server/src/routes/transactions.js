@@ -49,15 +49,7 @@ router.post('/', authenticateToken, (req, res) => {
       meeting_time || null
     );
 
-    // Update listing quantity
-    const newQuantity = listing.quantity - quantity;
-    if (newQuantity === 0) {
-      db.prepare('UPDATE listings SET quantity = 0, status = ? WHERE id = ?')
-        .run('sold', listing_id);
-    } else {
-      db.prepare('UPDATE listings SET quantity = ? WHERE id = ?')
-        .run(newQuantity, listing_id);
-    }
+    // Don't update listing quantity/status yet - only when seller confirms
 
     const transaction = db.prepare(`
       SELECT t.*, l.title as listing_title, l.dining_hall,
@@ -189,7 +181,21 @@ router.put('/:id/status', authenticateToken, (req, res) => {
       return res.status(403).json({ error: 'Only seller can confirm transaction' });
     }
 
-    if (status === 'completed') {
+    if (status === 'confirmed' && transaction.status === 'pending') {
+      // Seller is confirming - now decrease listing quantity and mark sold if needed
+      const listing = db.prepare('SELECT * FROM listings WHERE id = ?').get(transaction.listing_id);
+      if (listing) {
+        const newQuantity = listing.quantity - transaction.quantity;
+        if (newQuantity <= 0) {
+          db.prepare('UPDATE listings SET quantity = 0, status = ? WHERE id = ?')
+            .run('sold', listing.id);
+        } else {
+          db.prepare('UPDATE listings SET quantity = ? WHERE id = ?')
+            .run(newQuantity, listing.id);
+        }
+      }
+      db.prepare('UPDATE transactions SET status = ? WHERE id = ?').run(status, req.params.id);
+    } else if (status === 'completed') {
       // Both parties can mark as completed
       db.prepare(`
         UPDATE transactions
@@ -197,8 +203,8 @@ router.put('/:id/status', authenticateToken, (req, res) => {
         WHERE id = ?
       `).run(status, req.params.id);
     } else if (status === 'cancelled') {
-      // Restore listing quantity on cancellation
-      if (transaction.status !== 'completed') {
+      // Restore listing quantity on cancellation only if transaction was confirmed
+      if (transaction.status === 'confirmed') {
         const listing = db.prepare('SELECT * FROM listings WHERE id = ?').get(transaction.listing_id);
         if (listing) {
           const newQuantity = listing.quantity + transaction.quantity;
