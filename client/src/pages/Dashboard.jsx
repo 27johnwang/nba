@@ -19,7 +19,8 @@ const Dashboard = () => {
     activeListings: 0,
     pendingTransactions: 0,
     completedTransactions: 0,
-    unreadMessages: 0
+    unreadMessages: 0,
+    pendingReviews: 0
   })
   const [recentListings, setRecentListings] = useState([])
   const [recentTransactions, setRecentTransactions] = useState([])
@@ -44,7 +45,8 @@ const Dashboard = () => {
         activeListings: listings.filter(l => l.status === 'active').length,
         pendingTransactions: transactions.filter(t => t.status === 'pending' || t.status === 'confirmed').length,
         completedTransactions: transactions.filter(t => t.status === 'completed').length,
-        unreadMessages: messagesRes.data.unreadCount
+        unreadMessages: messagesRes.data.unreadCount,
+        pendingReviews: transactions.filter(t => t.status === 'completed' && !t.has_reviewed).length
       })
 
       setRecentListings(listings.slice(0, 3))
@@ -92,10 +94,15 @@ const Dashboard = () => {
         </Link>
         <Link
           to="/transactions"
-          className="bg-white border-2 border-gray-200 text-gray-700 rounded-xl p-4 hover:bg-gray-50 transition-colors"
+          className="bg-white border-2 border-gray-200 text-gray-700 rounded-xl p-4 hover:bg-gray-50 transition-colors relative"
         >
           <ArrowLeftRight size={24} className="mb-2" />
           <span className="font-medium">Transactions</span>
+          {stats.pendingReviews > 0 && (
+            <span className="absolute top-2 right-2 bg-red-500 text-white text-xs rounded-full h-5 w-5 flex items-center justify-center">
+              {stats.pendingReviews}
+            </span>
+          )}
         </Link>
         <Link
           to="/messages"
