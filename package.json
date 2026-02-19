@@ -8,8 +8,9 @@
     "client": "cd client && npm run dev",
     "install-all": "npm install && cd server && npm install && cd ../client && npm install",
     "build": "cd client && npm install && npm run build && cd ../server && npm install",
-    "start": "cd server && npm start",
-    "seed": "cd server && npm run seed"
+    "start": "NODE_ENV=production cd server && npm start",
+    "seed": "cd server && npm run seed",
+    "postinstall": "npm run build"
   },
   "keywords": ["nyu", "mealswipe", "marketplace", "students"],
   "author": "",

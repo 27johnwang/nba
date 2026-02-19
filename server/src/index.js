@@ -22,7 +22,9 @@ const PORT = process.env.PORT || 3001;
 
 // Middleware
 app.use(cors({
-  origin: process.env.CLIENT_URL || 'http://localhost:5173',
+  origin: process.env.NODE_ENV === 'production'
+    ? true  // Allow same-origin in production (frontend served from same server)
+    : (process.env.CLIENT_URL || 'http://localhost:5173'),
   credentials: true
 }));
 app.use(express.json());
