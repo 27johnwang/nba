@@ -92,7 +92,10 @@ const Messages = () => {
   const selectConversation = (conv) => {
     setSelectedUser({
       id: conv.partner_id,
-      name: conv.partner_name
+      name: conv.partner_name,
+      listing_title: conv.listing_title,
+      listing_dining_hall: conv.listing_dining_hall,
+      listing_price: conv.listing_price
     })
     fetchMessages(conv.partner_id)
   }
@@ -106,10 +109,10 @@ const Messages = () => {
   }
 
   return (
-    <div className="h-[calc(100vh-200px)] min-h-[500px]">
-      <h1 className="text-2xl font-bold text-gray-800 mb-6">Messages</h1>
+    <div className="flex flex-col" style={{ height: 'calc(100vh - 180px)', minHeight: '500px' }}>
+      <h1 className="text-2xl font-bold text-gray-800 mb-4">Messages</h1>
 
-      <div className="bg-white rounded-xl shadow-md h-full flex overflow-hidden">
+      <div className="bg-white rounded-xl shadow-md flex-1 flex overflow-hidden">
         {/* Conversations List */}
         <div className={`w-full md:w-80 border-r flex-shrink-0 ${selectedUser ? 'hidden md:block' : ''}`}>
           <div className="p-4 border-b">
@@ -149,7 +152,12 @@ const Messages = () => {
                           </span>
                         )}
                       </div>
-                      <p className="text-sm text-gray-500 truncate">
+                      {conv.listing_dining_hall && (
+                        <p className="text-xs text-nyu-violet bg-purple-50 rounded px-2 py-0.5 mt-1 inline-block">
+                          {conv.listing_dining_hall} - ${conv.listing_price?.toFixed(2)}
+                        </p>
+                      )}
+                      <p className="text-sm text-gray-500 truncate mt-1">
                         {conv.last_message}
                       </p>
                       <p className="text-xs text-gray-400 mt-1">
@@ -178,9 +186,16 @@ const Messages = () => {
                 <div className="bg-nyu-violet text-white w-10 h-10 rounded-full flex items-center justify-center font-semibold">
                   {selectedUser.name.charAt(0)}
                 </div>
-                <span className="ml-3 font-semibold text-gray-800">
-                  {selectedUser.name}
-                </span>
+                <div className="ml-3">
+                  <span className="font-semibold text-gray-800 block">
+                    {selectedUser.name}
+                  </span>
+                  {selectedUser.listing_dining_hall && (
+                    <span className="text-xs text-nyu-violet bg-purple-50 rounded px-2 py-0.5 inline-block mt-1">
+                      {selectedUser.listing_dining_hall} - ${selectedUser.listing_price?.toFixed(2)}
+                    </span>
+                  )}
+                </div>
               </div>
 
               {/* Messages */}

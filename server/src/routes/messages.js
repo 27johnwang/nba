@@ -89,6 +89,8 @@ router.get('/conversations', authenticateToken, (req, res) => {
         lm.sender_id as last_message_sender_id,
         lm.listing_id,
         l.title as listing_title,
+        l.dining_hall as listing_dining_hall,
+        l.price as listing_price,
         (
           SELECT COUNT(*)
           FROM messages
@@ -121,7 +123,7 @@ router.get('/with/:userId', authenticateToken, (req, res) => {
 
     let query = `
       SELECT m.*, sender.name as sender_name, receiver.name as receiver_name,
-             l.title as listing_title
+             l.title as listing_title, l.dining_hall as listing_dining_hall, l.price as listing_price
       FROM messages m
       JOIN users sender ON m.sender_id = sender.id
       JOIN users receiver ON m.receiver_id = receiver.id
