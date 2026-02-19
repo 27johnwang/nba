@@ -365,7 +365,7 @@ const ListingDetail = () => {
                             </button>
                           )}
                           <Link
-                            to={`/messages/${tx.buyer_id}?dining_hall=${encodeURIComponent(listing.dining_hall)}&price=${listing.price}&role=seller`}
+                            to={`/messages/${tx.buyer_id}?dining_hall=${encodeURIComponent(listing.dining_hall)}&price=${listing.price}&role=seller&listing_id=${listing.id}`}
                             className="btn-secondary text-sm py-1.5"
                           >
                             <MessageSquare size={14} />

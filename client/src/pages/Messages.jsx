@@ -3,7 +3,7 @@ import { useParams, Link, useSearchParams } from 'react-router-dom'
 import { useAuth } from '../context/AuthContext'
 import api from '../utils/api'
 import { format } from 'date-fns'
-import { Send, ArrowLeft, User, MessageSquare, Star } from 'lucide-react'
+import { Send, ArrowLeft, User, MessageSquare, Star, CheckCircle } from 'lucide-react'
 
 const Messages = () => {
   const { userId } = useParams()
@@ -15,6 +15,8 @@ const Messages = () => {
   const [newMessage, setNewMessage] = useState('')
   const [loading, setLoading] = useState(true)
   const [sending, setSending] = useState(false)
+  const [transaction, setTransaction] = useState(null)
+  const [actionLoading, setActionLoading] = useState(false)
   const messagesEndRef = useRef(null)
 
   useEffect(() => {
@@ -31,6 +33,17 @@ const Messages = () => {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' })
   }, [messages])
 
+  const fetchTransaction = async (listingId, buyerId) => {
+    try {
+      const response = await api.get(`/transactions/listing/${listingId}`)
+      const tx = response.data.transactions.find(t => t.buyer_id === buyerId && t.status !== 'cancelled' && t.status !== 'completed')
+      setTransaction(tx || null)
+    } catch (err) {
+      console.error('Failed to fetch transaction:', err)
+      setTransaction(null)
+    }
+  }
+
   const fetchConversations = async () => {
     try {
       const response = await api.get('/messages/conversations')
@@ -45,15 +58,22 @@ const Messages = () => {
           setSelectedUser({
             id: conv.partner_id,
             name: conv.partner_name,
+            listing_id: conv.listing_id,
             listing_title: conv.listing_title,
             listing_dining_hall: conv.listing_dining_hall,
             listing_price: conv.listing_price,
+            listing_seller_id: conv.listing_seller_id,
             seller_rating: isPartnerSeller ? conv.partner_seller_rating : null,
             seller_reviews: isPartnerSeller ? conv.partner_seller_reviews : null,
             buyer_rating: !isPartnerSeller ? conv.partner_seller_rating : null,
             buyer_reviews: !isPartnerSeller ? conv.partner_seller_reviews : null,
             isPartnerSeller
           })
+
+          // If I'm seller, fetch transaction
+          if (!isPartnerSeller && conv.listing_id) {
+            fetchTransaction(conv.listing_id, conv.partner_id)
+          }
         } else {
           // No existing conversation - fetch user info directly
           try {
@@ -63,18 +83,26 @@ const Messages = () => {
             const listingDiningHall = searchParams.get('dining_hall')
             const listingPrice = searchParams.get('price')
             const role = searchParams.get('role') // 'buyer' or 'seller' - current user's role
+            const listingId = searchParams.get('listing_id')
 
+            const isPartnerSeller = role === 'buyer'
             setSelectedUser({
               id: userId,
               name: partnerUser.name,
+              listing_id: listingId,
               listing_dining_hall: listingDiningHall,
               listing_price: listingPrice ? parseFloat(listingPrice) : null,
               seller_rating: partnerUser.seller_rating,
               seller_reviews: partnerUser.seller_reviews,
               buyer_rating: partnerUser.buyer_rating,
               buyer_reviews: partnerUser.buyer_reviews,
-              isPartnerSeller: role === 'buyer' // if I'm buyer, partner is seller
+              isPartnerSeller
             })
+
+            // If I'm seller and there's a listing, fetch transaction
+            if (role === 'seller' && listingId) {
+              fetchTransaction(listingId, userId)
+            }
           } catch {
             setSelectedUser({ id: userId, name: 'User' })
           }
@@ -128,19 +156,54 @@ const Messages = () => {
   const selectConversation = (conv) => {
     // Check if current user is buyer (partner is the seller of the listing)
     const isPartnerSeller = conv.listing_seller_id === conv.partner_id
-    setSelectedUser({
+    const selectedUserData = {
       id: conv.partner_id,
       name: conv.partner_name,
+      listing_id: conv.listing_id,
       listing_title: conv.listing_title,
       listing_dining_hall: conv.listing_dining_hall,
       listing_price: conv.listing_price,
+      listing_seller_id: conv.listing_seller_id,
       seller_rating: conv.partner_seller_rating,
       seller_reviews: conv.partner_seller_reviews,
       buyer_rating: conv.partner_buyer_rating,
       buyer_reviews: conv.partner_buyer_reviews,
       isPartnerSeller
-    })
+    }
+    setSelectedUser(selectedUserData)
+    setTransaction(null)
     fetchMessages(conv.partner_id)
+
+    // If I'm the seller (partner is buyer), fetch transaction info
+    if (!isPartnerSeller && conv.listing_id) {
+      fetchTransaction(conv.listing_id, conv.partner_id)
+    }
+  }
+
+  const handleMarkInterest = async () => {
+    if (!transaction) return
+    setActionLoading(true)
+    try {
+      await api.put(`/transactions/${transaction.id}/status`, { status: 'confirmed' })
+      setTransaction({ ...transaction, status: 'confirmed' })
+    } catch (err) {
+      console.error('Failed to mark interest:', err)
+    } finally {
+      setActionLoading(false)
+    }
+  }
+
+  const handleConfirmTransaction = async () => {
+    if (!transaction) return
+    setActionLoading(true)
+    try {
+      await api.put(`/transactions/${transaction.id}/status`, { status: 'completed' })
+      setTransaction(null)
+    } catch (err) {
+      console.error('Failed to confirm transaction:', err)
+    } finally {
+      setActionLoading(false)
+    }
   }
 
   if (loading) {
@@ -272,6 +335,32 @@ const Messages = () => {
                     </span>
                   )}
                 </div>
+
+                {/* Transaction actions for sellers */}
+                {transaction && (
+                  <div className="ml-auto">
+                    {transaction.status === 'pending' && (
+                      <button
+                        onClick={handleMarkInterest}
+                        disabled={actionLoading}
+                        className="btn-primary text-sm py-1.5 px-3 flex items-center"
+                      >
+                        <CheckCircle size={14} className="mr-1" />
+                        {actionLoading ? '...' : 'Mark Interest'}
+                      </button>
+                    )}
+                    {transaction.status === 'confirmed' && (
+                      <button
+                        onClick={handleConfirmTransaction}
+                        disabled={actionLoading}
+                        className="btn-primary text-sm py-1.5 px-3 bg-green-600 hover:bg-green-700 flex items-center"
+                      >
+                        <CheckCircle size={14} className="mr-1" />
+                        {actionLoading ? '...' : 'Confirm Transaction'}
+                      </button>
+                    )}
+                  </div>
+                )}
               </div>
 
               {/* Messages */}
