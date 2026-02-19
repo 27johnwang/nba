@@ -241,10 +241,27 @@ const Layout = () => {
         )}
       </header>
 
-      {/* Main Content */}
-      <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
-        <Outlet />
-      </main>
+      {/* Main Content with Ad Spaces */}
+      <div className="flex justify-center">
+        {/* Left Ad Space */}
+        <aside className="hidden xl:block w-40 flex-shrink-0 p-4">
+          <div className="sticky top-24 h-[600px] border-2 border-dashed border-gray-300 rounded-lg flex items-center justify-center bg-gray-50/50">
+            <span className="text-gray-400 text-sm text-center px-2">Ad Space</span>
+          </div>
+        </aside>
+
+        {/* Main Content */}
+        <main className="flex-1 max-w-7xl px-4 sm:px-6 lg:px-8 py-8">
+          <Outlet />
+        </main>
+
+        {/* Right Ad Space */}
+        <aside className="hidden xl:block w-40 flex-shrink-0 p-4">
+          <div className="sticky top-24 h-[600px] border-2 border-dashed border-gray-300 rounded-lg flex items-center justify-center bg-gray-50/50">
+            <span className="text-gray-400 text-sm text-center px-2">Ad Space</span>
+          </div>
+        </aside>
+      </div>
 
       {/* Footer */}
       <footer className="bg-gray-800 text-gray-300 py-8 mt-auto">
