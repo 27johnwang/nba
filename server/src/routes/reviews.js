@@ -28,8 +28,11 @@ router.post('/', authenticateToken, reviewValidation, (req, res) => {
       return res.status(403).json({ error: 'Not authorized to review this transaction' });
     }
 
-    // Determine who is being reviewed
+    // Determine who is being reviewed and what type of review
+    // If buyer is reviewing, they're reviewing the seller (as a seller)
+    // If seller is reviewing, they're reviewing the buyer (as a buyer)
     const reviewed_user_id = isBuyer ? transaction.seller_id : transaction.buyer_id;
+    const review_type = isBuyer ? 'seller' : 'buyer';
 
     // Check if already reviewed
     const existingReview = db.prepare(`
@@ -44,12 +47,33 @@ router.post('/', authenticateToken, reviewValidation, (req, res) => {
     const reviewId = uuidv4();
 
     db.prepare(`
-      INSERT INTO reviews (id, transaction_id, reviewer_id, reviewed_user_id, rating, comment)
-      VALUES (?, ?, ?, ?, ?, ?)
-    `).run(reviewId, transaction_id, req.user.id, reviewed_user_id, rating, comment || null);
+      INSERT INTO reviews (id, transaction_id, reviewer_id, reviewed_user_id, review_type, rating, comment)
+      VALUES (?, ?, ?, ?, ?, ?, ?)
+    `).run(reviewId, transaction_id, req.user.id, reviewed_user_id, review_type, rating, comment || null);
 
-    // Update user's average rating
+    // Update user's role-specific rating
     const ratingStats = db.prepare(`
+      SELECT AVG(rating) as avg_rating, COUNT(*) as total
+      FROM reviews
+      WHERE reviewed_user_id = ? AND review_type = ?
+    `).get(reviewed_user_id, review_type);
+
+    if (review_type === 'seller') {
+      db.prepare(`
+        UPDATE users
+        SET seller_rating = ?, seller_reviews = ?
+        WHERE id = ?
+      `).run(ratingStats.avg_rating || 0, ratingStats.total || 0, reviewed_user_id);
+    } else {
+      db.prepare(`
+        UPDATE users
+        SET buyer_rating = ?, buyer_reviews = ?
+        WHERE id = ?
+      `).run(ratingStats.avg_rating || 0, ratingStats.total || 0, reviewed_user_id);
+    }
+
+    // Also update overall rating
+    const overallStats = db.prepare(`
       SELECT AVG(rating) as avg_rating, COUNT(*) as total
       FROM reviews
       WHERE reviewed_user_id = ?
@@ -59,7 +83,7 @@ router.post('/', authenticateToken, reviewValidation, (req, res) => {
       UPDATE users
       SET rating = ?, total_reviews = ?
       WHERE id = ?
-    `).run(ratingStats.avg_rating, ratingStats.total, reviewed_user_id);
+    `).run(overallStats.avg_rating || 0, overallStats.total || 0, reviewed_user_id);
 
     const review = db.prepare(`
       SELECT r.*, u.name as reviewer_name

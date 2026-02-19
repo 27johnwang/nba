@@ -3,7 +3,7 @@ import { useParams, Link } from 'react-router-dom'
 import { useAuth } from '../context/AuthContext'
 import api from '../utils/api'
 import { format } from 'date-fns'
-import { Send, ArrowLeft, User, MessageSquare } from 'lucide-react'
+import { Send, ArrowLeft, User, MessageSquare, Star } from 'lucide-react'
 
 const Messages = () => {
   const { userId } = useParams()
@@ -90,12 +90,17 @@ const Messages = () => {
   }
 
   const selectConversation = (conv) => {
+    // Check if current user is buyer (partner is the seller of the listing)
+    const isPartnerSeller = conv.listing_seller_id === conv.partner_id
     setSelectedUser({
       id: conv.partner_id,
       name: conv.partner_name,
       listing_title: conv.listing_title,
       listing_dining_hall: conv.listing_dining_hall,
-      listing_price: conv.listing_price
+      listing_price: conv.listing_price,
+      seller_rating: isPartnerSeller ? conv.partner_seller_rating : null,
+      seller_reviews: isPartnerSeller ? conv.partner_seller_reviews : null,
+      isPartnerSeller
     })
     fetchMessages(conv.partner_id)
   }
@@ -186,10 +191,24 @@ const Messages = () => {
                 <div className="bg-nyu-violet text-white w-10 h-10 rounded-full flex items-center justify-center font-semibold">
                   {selectedUser.name.charAt(0)}
                 </div>
-                <div className="ml-3">
-                  <span className="font-semibold text-gray-800 block">
-                    {selectedUser.name}
-                  </span>
+                <div className="ml-3 flex-1">
+                  <div className="flex items-center gap-2">
+                    <span className="font-semibold text-gray-800">
+                      {selectedUser.name}
+                    </span>
+                    {/* Show seller rating when partner is a seller */}
+                    {selectedUser.isPartnerSeller && (
+                      <div className="flex items-center bg-yellow-50 px-2 py-0.5 rounded text-xs">
+                        <Star size={12} className="text-yellow-500" fill="currentColor" />
+                        <span className="ml-1 text-gray-700">
+                          {selectedUser.seller_rating > 0 ? selectedUser.seller_rating.toFixed(1) : 'N/A'}
+                        </span>
+                        <span className="text-gray-500 ml-0.5">
+                          ({selectedUser.seller_reviews || 0})
+                        </span>
+                      </div>
+                    )}
+                  </div>
                   {selectedUser.listing_dining_hall && (
                     <span className="text-xs text-nyu-violet bg-purple-50 rounded px-2 py-0.5 inline-block mt-1">
                       {selectedUser.listing_dining_hall} - ${selectedUser.listing_price?.toFixed(2)}

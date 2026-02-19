@@ -84,6 +84,8 @@ router.get('/conversations', authenticateToken, (req, res) => {
         lm.partner_id,
         u.name as partner_name,
         u.profile_image as partner_image,
+        u.seller_rating as partner_seller_rating,
+        u.seller_reviews as partner_seller_reviews,
         lm.content as last_message,
         lm.created_at as last_message_at,
         lm.sender_id as last_message_sender_id,
@@ -91,6 +93,7 @@ router.get('/conversations', authenticateToken, (req, res) => {
         l.title as listing_title,
         l.dining_hall as listing_dining_hall,
         l.price as listing_price,
+        l.seller_id as listing_seller_id,
         (
           SELECT COUNT(*)
           FROM messages

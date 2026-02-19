@@ -68,17 +68,26 @@ const Profile = () => {
           <div className="ml-4">
             <h2 className="text-xl font-semibold text-gray-800">{user?.name}</h2>
             <p className="text-gray-500">{user?.email}</p>
-            <div className="flex items-center mt-1">
-              {user?.rating > 0 ? (
-                <>
-                  <Star size={16} className="text-yellow-500" fill="currentColor" />
-                  <span className="ml-1 text-gray-600">
-                    {user.rating.toFixed(1)} ({user.total_reviews} review{user.total_reviews !== 1 ? 's' : ''})
-                  </span>
-                </>
-              ) : (
-                <span className="text-gray-400 text-sm">No reviews yet</span>
-              )}
+            {/* Dual Ratings Display */}
+            <div className="flex flex-wrap gap-3 mt-2">
+              <div className="flex items-center bg-purple-50 px-2 py-1 rounded">
+                <Star size={14} className="text-yellow-500" fill="currentColor" />
+                <span className="ml-1 text-sm text-gray-700">
+                  Seller: {user?.seller_rating > 0 ? user.seller_rating.toFixed(1) : 'N/A'}
+                </span>
+                <span className="text-xs text-gray-500 ml-1">
+                  ({user?.seller_reviews || 0})
+                </span>
+              </div>
+              <div className="flex items-center bg-blue-50 px-2 py-1 rounded">
+                <Star size={14} className="text-yellow-500" fill="currentColor" />
+                <span className="ml-1 text-sm text-gray-700">
+                  Buyer: {user?.buyer_rating > 0 ? user.buyer_rating.toFixed(1) : 'N/A'}
+                </span>
+                <span className="text-xs text-gray-500 ml-1">
+                  ({user?.buyer_reviews || 0})
+                </span>
+              </div>
             </div>
           </div>
         </div>
@@ -219,8 +228,12 @@ const Profile = () => {
             </span>
           </div>
           <div className="flex justify-between">
-            <span className="text-gray-500">Total reviews</span>
-            <span className="text-gray-800">{user?.total_reviews || 0}</span>
+            <span className="text-gray-500">Seller reviews</span>
+            <span className="text-gray-800">{user?.seller_reviews || 0}</span>
+          </div>
+          <div className="flex justify-between">
+            <span className="text-gray-500">Buyer reviews</span>
+            <span className="text-gray-800">{user?.buyer_reviews || 0}</span>
           </div>
           <div className="flex justify-between">
             <span className="text-gray-500">Account status</span>

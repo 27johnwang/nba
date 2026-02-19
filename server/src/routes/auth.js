@@ -31,7 +31,7 @@ router.post('/register', registerValidation, async (req, res) => {
     stmt.run(userId, email, hashedPassword, name, phone || null, venmo_handle || null, verificationToken);
 
     // Get created user
-    const user = db.prepare('SELECT id, email, name, phone, venmo_handle, rating, created_at FROM users WHERE id = ?').get(userId);
+    const user = db.prepare('SELECT id, email, name, phone, venmo_handle, rating, seller_rating, seller_reviews, buyer_rating, buyer_reviews, created_at FROM users WHERE id = ?').get(userId);
 
     const token = generateToken(user);
 
@@ -84,7 +84,9 @@ router.get('/me', authenticateToken, (req, res) => {
   try {
     const user = db.prepare(`
       SELECT id, email, name, phone, venmo_handle, profile_image,
-             dining_hall_preference, rating, total_reviews, created_at, is_verified
+             dining_hall_preference, rating, total_reviews,
+             seller_rating, seller_reviews, buyer_rating, buyer_reviews,
+             created_at, is_verified
       FROM users WHERE id = ?
     `).get(req.user.id);
 
@@ -117,7 +119,9 @@ router.put('/profile', authenticateToken, async (req, res) => {
 
     const user = db.prepare(`
       SELECT id, email, name, phone, venmo_handle, profile_image,
-             dining_hall_preference, rating, total_reviews, created_at
+             dining_hall_preference, rating, total_reviews,
+             seller_rating, seller_reviews, buyer_rating, buyer_reviews,
+             created_at
       FROM users WHERE id = ?
     `).get(req.user.id);
 

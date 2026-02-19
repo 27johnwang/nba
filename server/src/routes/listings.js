@@ -28,7 +28,7 @@ router.get('/', optionalAuth, (req, res) => {
     const { dining_hall, date, min_price, max_price, sort } = req.query;
 
     let query = `
-      SELECT l.*, u.name as seller_name, u.rating as seller_rating, u.total_reviews as seller_reviews
+      SELECT l.*, u.name as seller_name, u.seller_rating, u.seller_reviews
       FROM listings l
       JOIN users u ON l.seller_id = u.id
       WHERE l.status = 'active'
@@ -91,9 +91,8 @@ router.get('/', optionalAuth, (req, res) => {
 router.get('/:id', optionalAuth, (req, res) => {
   try {
     const listing = db.prepare(`
-      SELECT l.*, u.name as seller_name, u.rating as seller_rating,
-             u.total_reviews as seller_reviews, u.venmo_handle as seller_venmo,
-             u.phone as seller_phone
+      SELECT l.*, u.name as seller_name, u.seller_rating, u.seller_reviews,
+             u.venmo_handle as seller_venmo, u.phone as seller_phone
       FROM listings l
       JOIN users u ON l.seller_id = u.id
       WHERE l.id = ?
