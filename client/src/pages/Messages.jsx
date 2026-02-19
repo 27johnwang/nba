@@ -1,5 +1,5 @@
 import { useState, useEffect, useRef } from 'react'
-import { useParams, Link } from 'react-router-dom'
+import { useParams, Link, useSearchParams } from 'react-router-dom'
 import { useAuth } from '../context/AuthContext'
 import api from '../utils/api'
 import { format } from 'date-fns'
@@ -7,6 +7,7 @@ import { Send, ArrowLeft, User, MessageSquare, Star } from 'lucide-react'
 
 const Messages = () => {
   const { userId } = useParams()
+  const [searchParams] = useSearchParams()
   const { user } = useAuth()
   const [conversations, setConversations] = useState([])
   const [messages, setMessages] = useState([])
@@ -39,17 +40,43 @@ const Messages = () => {
       if (userId) {
         const conv = response.data.conversations.find(c => c.partner_id === userId)
         if (conv) {
+          // Existing conversation - use conversation data
+          const isPartnerSeller = conv.listing_seller_id === conv.partner_id
           setSelectedUser({
             id: conv.partner_id,
-            name: conv.partner_name
+            name: conv.partner_name,
+            listing_title: conv.listing_title,
+            listing_dining_hall: conv.listing_dining_hall,
+            listing_price: conv.listing_price,
+            seller_rating: isPartnerSeller ? conv.partner_seller_rating : null,
+            seller_reviews: isPartnerSeller ? conv.partner_seller_reviews : null,
+            buyer_rating: !isPartnerSeller ? conv.partner_seller_rating : null,
+            buyer_reviews: !isPartnerSeller ? conv.partner_seller_reviews : null,
+            isPartnerSeller
           })
         } else {
-          // Fetch user info if not in conversations
+          // No existing conversation - fetch user info directly
           try {
-            const userRes = await api.get(`/auth/me`)
-            setSelectedUser({ id: userId, name: 'User' })
+            const userRes = await api.get(`/auth/user/${userId}`)
+            const partnerUser = userRes.data.user
+            // Get listing info from URL params if available
+            const listingDiningHall = searchParams.get('dining_hall')
+            const listingPrice = searchParams.get('price')
+            const role = searchParams.get('role') // 'buyer' or 'seller' - current user's role
+
+            setSelectedUser({
+              id: userId,
+              name: partnerUser.name,
+              listing_dining_hall: listingDiningHall,
+              listing_price: listingPrice ? parseFloat(listingPrice) : null,
+              seller_rating: partnerUser.seller_rating,
+              seller_reviews: partnerUser.seller_reviews,
+              buyer_rating: partnerUser.buyer_rating,
+              buyer_reviews: partnerUser.buyer_reviews,
+              isPartnerSeller: role === 'buyer' // if I'm buyer, partner is seller
+            })
           } catch {
-            // Ignore
+            setSelectedUser({ id: userId, name: 'User' })
           }
         }
       }
@@ -98,8 +125,10 @@ const Messages = () => {
       listing_title: conv.listing_title,
       listing_dining_hall: conv.listing_dining_hall,
       listing_price: conv.listing_price,
-      seller_rating: isPartnerSeller ? conv.partner_seller_rating : null,
-      seller_reviews: isPartnerSeller ? conv.partner_seller_reviews : null,
+      seller_rating: conv.partner_seller_rating,
+      seller_reviews: conv.partner_seller_reviews,
+      buyer_rating: conv.partner_buyer_rating,
+      buyer_reviews: conv.partner_buyer_reviews,
       isPartnerSeller
     })
     fetchMessages(conv.partner_id)
@@ -192,11 +221,11 @@ const Messages = () => {
                   {selectedUser.name.charAt(0)}
                 </div>
                 <div className="ml-3 flex-1">
-                  <div className="flex items-center gap-2">
+                  <div className="flex items-center gap-2 flex-wrap">
                     <span className="font-semibold text-gray-800">
                       {selectedUser.name}
                     </span>
-                    {/* Show seller rating when partner is a seller */}
+                    {/* Show seller rating when partner is a seller (yellow) */}
                     {selectedUser.isPartnerSeller && (
                       <div className="flex items-center bg-yellow-50 px-2 py-0.5 rounded text-xs">
                         <Star size={12} className="text-yellow-500" fill="currentColor" />
@@ -204,7 +233,19 @@ const Messages = () => {
                           {selectedUser.seller_rating > 0 ? selectedUser.seller_rating.toFixed(1) : 'N/A'}
                         </span>
                         <span className="text-gray-500 ml-0.5">
-                          ({selectedUser.seller_reviews || 0})
+                          ({selectedUser.seller_reviews || 0} as seller)
+                        </span>
+                      </div>
+                    )}
+                    {/* Show buyer rating when partner is a buyer (blue) */}
+                    {!selectedUser.isPartnerSeller && selectedUser.buyer_rating !== undefined && (
+                      <div className="flex items-center bg-blue-50 px-2 py-0.5 rounded text-xs">
+                        <Star size={12} className="text-blue-500" fill="currentColor" />
+                        <span className="ml-1 text-gray-700">
+                          {selectedUser.buyer_rating > 0 ? selectedUser.buyer_rating.toFixed(1) : 'N/A'}
+                        </span>
+                        <span className="text-gray-500 ml-0.5">
+                          ({selectedUser.buyer_reviews || 0} as buyer)
                         </span>
                       </div>
                     )}

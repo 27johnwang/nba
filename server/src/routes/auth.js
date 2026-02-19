@@ -101,6 +101,26 @@ router.get('/me', authenticateToken, (req, res) => {
   }
 });
 
+// Get user by ID (public profile)
+router.get('/user/:id', authenticateToken, (req, res) => {
+  try {
+    const user = db.prepare(`
+      SELECT id, name, profile_image, seller_rating, seller_reviews,
+             buyer_rating, buyer_reviews, created_at
+      FROM users WHERE id = ?
+    `).get(req.params.id);
+
+    if (!user) {
+      return res.status(404).json({ error: 'User not found' });
+    }
+
+    res.json({ user });
+  } catch (error) {
+    console.error('Get user error:', error);
+    res.status(500).json({ error: 'Error fetching user' });
+  }
+});
+
 // Update profile
 router.put('/profile', authenticateToken, async (req, res) => {
   try {

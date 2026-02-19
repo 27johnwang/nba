@@ -86,6 +86,8 @@ router.get('/conversations', authenticateToken, (req, res) => {
         u.profile_image as partner_image,
         u.seller_rating as partner_seller_rating,
         u.seller_reviews as partner_seller_reviews,
+        u.buyer_rating as partner_buyer_rating,
+        u.buyer_reviews as partner_buyer_reviews,
         lm.content as last_message,
         lm.created_at as last_message_at,
         lm.sender_id as last_message_sender_id,

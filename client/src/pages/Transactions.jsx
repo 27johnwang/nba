@@ -236,7 +236,7 @@ const Transactions = () => {
 
                   {/* Message button */}
                   <Link
-                    to={`/messages/${isBuyer ? tx.seller_id : tx.buyer_id}`}
+                    to={`/messages/${isBuyer ? tx.seller_id : tx.buyer_id}?dining_hall=${encodeURIComponent(tx.dining_hall)}&price=${tx.unit_price}&role=${isBuyer ? 'buyer' : 'seller'}`}
                     className="btn-secondary flex items-center"
                   >
                     <MessageSquare size={16} className="mr-1" />
