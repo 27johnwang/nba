@@ -119,6 +119,45 @@ router.get('/', authenticateToken, (req, res) => {
   }
 });
 
+// Get transactions for a specific listing (for sellers to see pending buyers)
+router.get('/listing/:listingId', authenticateToken, (req, res) => {
+  try {
+    const { listingId } = req.params;
+
+    // Verify the listing exists and user is the seller
+    const listing = db.prepare('SELECT * FROM listings WHERE id = ?').get(listingId);
+    if (!listing) {
+      return res.status(404).json({ error: 'Listing not found' });
+    }
+
+    if (listing.seller_id !== req.user.id) {
+      return res.status(403).json({ error: 'Not authorized to view these transactions' });
+    }
+
+    const transactions = db.prepare(`
+      SELECT t.*,
+             buyer.id as buyer_id, buyer.name as buyer_name, buyer.email as buyer_email,
+             buyer.buyer_rating, buyer.buyer_reviews
+      FROM transactions t
+      JOIN users buyer ON t.buyer_id = buyer.id
+      WHERE t.listing_id = ?
+      ORDER BY
+        CASE t.status
+          WHEN 'confirmed' THEN 1
+          WHEN 'pending' THEN 2
+          WHEN 'completed' THEN 3
+          ELSE 4
+        END,
+        t.created_at ASC
+    `).all(listingId);
+
+    res.json({ transactions });
+  } catch (error) {
+    console.error('Get listing transactions error:', error);
+    res.status(500).json({ error: 'Error fetching transactions' });
+  }
+});
+
 // Get single transaction
 router.get('/:id', authenticateToken, (req, res) => {
   try {
@@ -189,6 +228,13 @@ router.put('/:id/status', authenticateToken, (req, res) => {
         if (newQuantity <= 0) {
           db.prepare('UPDATE listings SET quantity = 0, status = ? WHERE id = ?')
             .run('sold', listing.id);
+
+          // Cancel all other pending transactions for this listing since it's sold out
+          db.prepare(`
+            UPDATE transactions
+            SET status = 'cancelled'
+            WHERE listing_id = ? AND id != ? AND status = 'pending'
+          `).run(listing.id, req.params.id);
         } else {
           db.prepare('UPDATE listings SET quantity = ? WHERE id = ?')
             .run(newQuantity, listing.id);

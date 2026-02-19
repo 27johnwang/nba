@@ -13,7 +13,9 @@ import {
   MessageSquare,
   ShoppingCart,
   ArrowLeft,
-  AlertCircle
+  AlertCircle,
+  CheckCircle,
+  XCircle
 } from 'lucide-react'
 
 const ListingDetail = () => {
@@ -33,9 +35,19 @@ const ListingDetail = () => {
   const [messageLoading, setMessageLoading] = useState(false)
   const [messageSent, setMessageSent] = useState(false)
 
+  const [pendingBuyers, setPendingBuyers] = useState([])
+  const [buyersLoading, setBuyersLoading] = useState(false)
+  const [actionLoading, setActionLoading] = useState(null)
+
   useEffect(() => {
     fetchListing()
   }, [id])
+
+  useEffect(() => {
+    if (listing?.is_owner) {
+      fetchPendingBuyers()
+    }
+  }, [listing])
 
   const fetchListing = async () => {
     try {
@@ -45,6 +57,57 @@ const ListingDetail = () => {
       setError('Failed to load listing')
     } finally {
       setLoading(false)
+    }
+  }
+
+  const fetchPendingBuyers = async () => {
+    setBuyersLoading(true)
+    try {
+      const response = await api.get(`/transactions/listing/${id}`)
+      setPendingBuyers(response.data.transactions)
+    } catch (err) {
+      console.error('Failed to fetch pending buyers:', err)
+    } finally {
+      setBuyersLoading(false)
+    }
+  }
+
+  const handleConfirmSale = async (transactionId) => {
+    setActionLoading(transactionId)
+    try {
+      await api.put(`/transactions/${transactionId}/status`, { status: 'confirmed' })
+      fetchPendingBuyers()
+      fetchListing()
+    } catch (err) {
+      setError(err.response?.data?.error || 'Failed to confirm sale')
+    } finally {
+      setActionLoading(null)
+    }
+  }
+
+  const handleMarkComplete = async (transactionId) => {
+    setActionLoading(transactionId)
+    try {
+      await api.put(`/transactions/${transactionId}/status`, { status: 'completed' })
+      fetchPendingBuyers()
+      fetchListing()
+    } catch (err) {
+      setError(err.response?.data?.error || 'Failed to mark complete')
+    } finally {
+      setActionLoading(null)
+    }
+  }
+
+  const handleCancelTransaction = async (transactionId) => {
+    setActionLoading(transactionId)
+    try {
+      await api.put(`/transactions/${transactionId}/status`, { status: 'cancelled' })
+      fetchPendingBuyers()
+      fetchListing()
+    } catch (err) {
+      setError(err.response?.data?.error || 'Failed to cancel')
+    } finally {
+      setActionLoading(null)
     }
   }
 
@@ -212,14 +275,115 @@ const ListingDetail = () => {
         <div className="lg:col-span-1">
           <div className="bg-white rounded-xl shadow-md p-6 sticky top-24">
             {isOwner ? (
-              <div className="text-center">
-                <p className="text-gray-600 mb-4">This is your listing</p>
-                <Link
-                  to="/my-listings"
-                  className="btn-outline w-full block text-center"
-                >
-                  Manage Your Listings
-                </Link>
+              <div>
+                <h3 className="font-semibold text-gray-800 mb-4">Buyer Requests</h3>
+
+                {buyersLoading ? (
+                  <div className="flex justify-center py-4">
+                    <div className="animate-spin rounded-full h-6 w-6 border-b-2 border-nyu-violet"></div>
+                  </div>
+                ) : pendingBuyers.length === 0 ? (
+                  <div className="text-center py-4">
+                    <p className="text-gray-500 text-sm">No buyer requests yet</p>
+                  </div>
+                ) : (
+                  <div className="space-y-3">
+                    {pendingBuyers.filter(tx => tx.status !== 'cancelled' && tx.status !== 'completed').map((tx) => (
+                      <div
+                        key={tx.id}
+                        className={`p-4 rounded-lg border-2 ${
+                          tx.status === 'confirmed'
+                            ? 'border-green-500 bg-green-50'
+                            : 'border-gray-200 bg-white'
+                        }`}
+                      >
+                        <div className="flex items-center mb-2">
+                          <Link
+                            to={`/user/${tx.buyer_id}`}
+                            className="bg-nyu-violet text-white w-8 h-8 rounded-full flex items-center justify-center font-semibold text-sm hover:bg-nyu-violet-dark"
+                          >
+                            {tx.buyer_name.charAt(0)}
+                          </Link>
+                          <div className="ml-2 flex-1">
+                            <Link
+                              to={`/user/${tx.buyer_id}`}
+                              className={`font-medium hover:text-nyu-violet ${
+                                tx.status === 'confirmed' ? 'text-green-700' : 'text-gray-800'
+                              }`}
+                            >
+                              {tx.buyer_name}
+                            </Link>
+                            <div className="flex items-center text-xs text-gray-500">
+                              {tx.buyer_rating > 0 ? (
+                                <>
+                                  <Star size={10} className="text-yellow-500 mr-0.5" fill="currentColor" />
+                                  {tx.buyer_rating.toFixed(1)}
+                                </>
+                              ) : (
+                                'New buyer'
+                              )}
+                            </div>
+                          </div>
+                          {tx.status === 'confirmed' && (
+                            <span className="text-xs font-medium text-green-600 bg-green-100 px-2 py-1 rounded">
+                              Confirmed
+                            </span>
+                          )}
+                        </div>
+
+                        <p className="text-sm text-gray-600 mb-3">
+                          {tx.quantity} swipe{tx.quantity > 1 ? 's' : ''} · ${tx.total_price.toFixed(2)}
+                        </p>
+
+                        <div className="flex gap-2">
+                          {tx.status === 'pending' && (
+                            <>
+                              <button
+                                onClick={() => handleConfirmSale(tx.id)}
+                                disabled={actionLoading === tx.id}
+                                className="flex-1 btn-primary text-sm py-1.5 flex items-center justify-center"
+                              >
+                                <CheckCircle size={14} className="mr-1" />
+                                {actionLoading === tx.id ? '...' : 'Confirm'}
+                              </button>
+                              <button
+                                onClick={() => handleCancelTransaction(tx.id)}
+                                disabled={actionLoading === tx.id}
+                                className="btn-secondary text-sm py-1.5 text-red-600"
+                              >
+                                <XCircle size={14} />
+                              </button>
+                            </>
+                          )}
+                          {tx.status === 'confirmed' && (
+                            <button
+                              onClick={() => handleMarkComplete(tx.id)}
+                              disabled={actionLoading === tx.id}
+                              className="flex-1 btn-primary text-sm py-1.5 bg-green-600 hover:bg-green-700"
+                            >
+                              {actionLoading === tx.id ? '...' : 'Mark Complete'}
+                            </button>
+                          )}
+                          <Link
+                            to={`/messages/${tx.buyer_id}?dining_hall=${encodeURIComponent(listing.dining_hall)}&price=${listing.price}&role=seller`}
+                            className="btn-secondary text-sm py-1.5"
+                          >
+                            <MessageSquare size={14} />
+                          </Link>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                )}
+
+                <div className="mt-4 pt-4 border-t">
+                  <Link
+                    to="/my-listings"
+                    className="btn-outline w-full block text-center text-sm"
+                  >
+                    Manage All Listings
+                  </Link>
+                </div>
               </div>
             ) : (
               <>

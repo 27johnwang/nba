@@ -235,9 +235,12 @@ const Messages = () => {
                 </Link>
                 <div className="ml-3 flex-1">
                   <div className="flex items-center gap-2 flex-wrap">
-                    <span className="font-semibold text-gray-800">
+                    <Link
+                      to={`/user/${selectedUser.id}`}
+                      className="font-semibold text-gray-800 hover:text-nyu-violet transition-colors"
+                    >
                       {selectedUser.name}
-                    </span>
+                    </Link>
                     {/* Show seller rating when partner is a seller (yellow) */}
                     {selectedUser.isPartnerSeller && (
                       <div className="flex items-center bg-yellow-50 px-2 py-0.5 rounded text-xs">
