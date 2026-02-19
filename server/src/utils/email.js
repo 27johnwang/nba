@@ -74,21 +74,21 @@ export const sendPasswordResetEmail = async (email, code, name) => {
 
   const htmlContent = `
     <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">
-      <h2 style="color: #57068c;">Password Reset Request</h2>
+      <h2 style="color: #57068c;">NYU Mealswipe Account Code</h2>
       <p>Hi ${name},</p>
-      <p>We received a request to reset your password. Use the following code to reset it:</p>
+      <p>Here is your verification code for your account request:</p>
       <div style="background-color: #f5f5f5; padding: 20px; text-align: center; margin: 20px 0;">
         <span style="font-size: 32px; font-weight: bold; letter-spacing: 8px; color: #57068c;">${code}</span>
       </div>
       <p>This code will expire in <strong>15 minutes</strong>.</p>
-      <p>If you didn't request a password reset, you can safely ignore this email. Your password will remain unchanged.</p>
+      <p>If you didn't request this, you can safely ignore this email.</p>
       <hr style="border: none; border-top: 1px solid #eee; margin: 20px 0;">
       <p style="color: #666; font-size: 12px;">NYU Mealswipe Marketplace - Buy and sell meal swipes with fellow NYU students</p>
     </div>
   `;
 
   try {
-    const result = await sendBrevoEmail(email, 'Reset your NYU Mealswipe password', htmlContent);
+    const result = await sendBrevoEmail(email, 'Your NYU Mealswipe verification code', htmlContent);
     console.log(`Password reset email sent to ${email}`, result);
   } catch (error) {
     console.error('Failed to send password reset email:', error.message);
