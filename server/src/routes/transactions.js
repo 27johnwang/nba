@@ -51,6 +51,20 @@ router.post('/', authenticateToken, (req, res) => {
 
     // Don't update listing quantity/status yet - only when seller confirms
 
+    // Automatically create a message for this listing to start a conversation
+    // This ensures new listing requests have their own conversation thread
+    const messageId = uuidv4();
+    db.prepare(`
+      INSERT INTO messages (id, sender_id, receiver_id, listing_id, content)
+      VALUES (?, ?, ?, ?, ?)
+    `).run(
+      messageId,
+      req.user.id,
+      listing.seller_id,
+      listing_id,
+      `Hi! I'd like to buy ${quantity} meal swipe${quantity > 1 ? 's' : ''} from your ${listing.dining_hall} listing.`
+    );
+
     const transaction = db.prepare(`
       SELECT t.*, l.title as listing_title, l.dining_hall,
              buyer.name as buyer_name, seller.name as seller_name
