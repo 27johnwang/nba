@@ -98,6 +98,20 @@ export const createTables = (db) => {
     )
   `);
 
+  // Archived conversations table
+  db.exec(`
+    CREATE TABLE IF NOT EXISTS archived_conversations (
+      id TEXT PRIMARY KEY,
+      user_id TEXT NOT NULL,
+      partner_id TEXT NOT NULL,
+      listing_id TEXT,
+      archived_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+      FOREIGN KEY (user_id) REFERENCES users(id),
+      FOREIGN KEY (partner_id) REFERENCES users(id),
+      FOREIGN KEY (listing_id) REFERENCES listings(id)
+    )
+  `);
+
   // Create indexes for better performance
   db.exec(`
     CREATE INDEX IF NOT EXISTS idx_listings_seller ON listings(seller_id);

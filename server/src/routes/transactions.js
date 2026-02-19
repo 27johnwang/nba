@@ -239,16 +239,38 @@ router.put('/:id/status', authenticateToken, (req, res) => {
         if (newQuantity <= 0) {
           db.prepare('UPDATE listings SET quantity = 0, status = ? WHERE id = ?')
             .run('sold', listing.id);
-
-          // Cancel all other pending/confirmed transactions for this listing since it's sold out
-          db.prepare(`
-            UPDATE transactions
-            SET status = 'cancelled'
-            WHERE listing_id = ? AND id != ? AND status IN ('pending', 'confirmed')
-          `).run(listing.id, req.params.id);
         } else {
           db.prepare('UPDATE listings SET quantity = ? WHERE id = ?')
             .run(newQuantity, listing.id);
+        }
+
+        // Get all other pending/confirmed transactions for this listing before cancelling
+        const otherTransactions = db.prepare(`
+          SELECT buyer_id FROM transactions
+          WHERE listing_id = ? AND id != ? AND status IN ('pending', 'confirmed')
+        `).all(listing.id, req.params.id);
+
+        // Cancel all other pending/confirmed transactions for this listing
+        db.prepare(`
+          UPDATE transactions
+          SET status = 'cancelled'
+          WHERE listing_id = ? AND id != ? AND status IN ('pending', 'confirmed')
+        `).run(listing.id, req.params.id);
+
+        // Archive the conversation with the completed buyer (for seller)
+        const archiveId = uuidv4();
+        db.prepare(`
+          INSERT OR IGNORE INTO archived_conversations (id, user_id, partner_id, listing_id)
+          VALUES (?, ?, ?, ?)
+        `).run(archiveId, transaction.seller_id, transaction.buyer_id, listing.id);
+
+        // Archive conversations with rejected buyers (for seller)
+        for (const tx of otherTransactions) {
+          const rejectedArchiveId = uuidv4();
+          db.prepare(`
+            INSERT OR IGNORE INTO archived_conversations (id, user_id, partner_id, listing_id)
+            VALUES (?, ?, ?, ?)
+          `).run(rejectedArchiveId, transaction.seller_id, tx.buyer_id, listing.id);
         }
       }
       db.prepare(`

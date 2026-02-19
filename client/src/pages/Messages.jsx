@@ -3,7 +3,7 @@ import { useParams, Link, useSearchParams } from 'react-router-dom'
 import { useAuth } from '../context/AuthContext'
 import api from '../utils/api'
 import { format } from 'date-fns'
-import { Send, ArrowLeft, User, MessageSquare, Star, CheckCircle, Heart, XCircle } from 'lucide-react'
+import { Send, ArrowLeft, User, MessageSquare, Star, CheckCircle, Heart, XCircle, Archive } from 'lucide-react'
 
 const Messages = () => {
   const { userId } = useParams()
@@ -173,7 +173,8 @@ const Messages = () => {
       seller_reviews: conv.partner_seller_reviews,
       buyer_rating: conv.partner_buyer_rating,
       buyer_reviews: conv.partner_buyer_reviews,
-      isPartnerSeller
+      isPartnerSeller,
+      is_archived: conv.is_archived
     }
     setSelectedUser(selectedUserData)
     setTransaction(null)
@@ -207,6 +208,13 @@ const Messages = () => {
     try {
       await api.put(`/transactions/${transaction.id}/status`, { status: 'completed' })
       setTransaction(null)
+      // Refresh conversations to update archive status
+      const response = await api.get('/messages/conversations')
+      setConversations(response.data.conversations)
+      // Update selectedUser to reflect archived status
+      if (selectedUser) {
+        setSelectedUser({ ...selectedUser, is_archived: true })
+      }
       // Show review modal after successful completion
       setReviewModal({ transactionId: txId, userName })
     } catch (err) {
@@ -290,44 +298,75 @@ const Messages = () => {
             </div>
           ) : (
             <div className="overflow-y-auto h-[calc(100%-60px)]">
-              {conversations.map((conv) => (
-                <button
-                  key={conv.partner_id}
-                  onClick={() => selectConversation(conv)}
-                  className={`w-full p-4 text-left hover:bg-gray-50 border-b transition-colors ${
-                    selectedUser?.id === conv.partner_id ? 'bg-purple-50' : ''
-                  }`}
-                >
-                  <div className="flex items-start">
-                    <div className="bg-nyu-violet text-white w-10 h-10 rounded-full flex items-center justify-center font-semibold flex-shrink-0">
-                      {conv.partner_name.charAt(0)}
-                    </div>
-                    <div className="ml-3 flex-1 min-w-0">
-                      <div className="flex justify-between items-start">
-                        <span className="font-medium text-gray-800 truncate">
-                          {conv.partner_name}
-                        </span>
-                        {conv.unread_count > 0 && (
-                          <span className="bg-nyu-violet text-white text-xs rounded-full px-2 py-0.5 ml-2">
-                            {conv.unread_count}
-                          </span>
-                        )}
+              {/* Archived section header */}
+              {conversations.some(c => c.is_archived) && (
+                <div className="px-4 py-2 bg-gray-100 border-b flex items-center">
+                  <Archive size={14} className="text-gray-500 mr-2" />
+                  <span className="text-xs font-medium text-gray-500 uppercase">Archived</span>
+                </div>
+              )}
+              {conversations.map((conv, index) => {
+                // Show "Active" header before first non-archived conversation
+                const showActiveHeader = !conv.is_archived &&
+                  (index === 0 || conversations[index - 1]?.is_archived)
+                return (
+                  <div key={`${conv.partner_id}-${conv.listing_id || 'no-listing'}`}>
+                    {showActiveHeader && conversations.some(c => c.is_archived) && (
+                      <div className="px-4 py-2 bg-gray-50 border-b flex items-center">
+                        <MessageSquare size={14} className="text-gray-500 mr-2" />
+                        <span className="text-xs font-medium text-gray-500 uppercase">Active</span>
                       </div>
-                      {conv.listing_dining_hall && (
-                        <p className="text-xs text-nyu-violet bg-purple-50 rounded px-2 py-0.5 mt-1 inline-block">
-                          {conv.listing_dining_hall} - ${conv.listing_price?.toFixed(2)}
-                        </p>
-                      )}
-                      <p className="text-sm text-gray-500 truncate mt-1">
-                        {conv.last_message}
-                      </p>
-                      <p className="text-xs text-gray-400 mt-1">
-                        {format(new Date(conv.last_message_at), 'MMM d, h:mm a')}
-                      </p>
-                    </div>
+                    )}
+                    <button
+                      onClick={() => selectConversation(conv)}
+                      className={`w-full p-4 text-left hover:bg-gray-50 border-b transition-colors ${
+                        selectedUser?.id === conv.partner_id && selectedUser?.listing_id === conv.listing_id ? 'bg-purple-50' : ''
+                      } ${conv.is_archived ? 'bg-gray-50' : ''}`}
+                    >
+                      <div className="flex items-start">
+                        <div className={`w-10 h-10 rounded-full flex items-center justify-center font-semibold flex-shrink-0 ${
+                          conv.is_archived ? 'bg-gray-400 text-white' : 'bg-nyu-violet text-white'
+                        }`}>
+                          {conv.partner_name.charAt(0)}
+                        </div>
+                        <div className="ml-3 flex-1 min-w-0">
+                          <div className="flex justify-between items-start">
+                            <div className="flex items-center gap-2">
+                              <span className={`font-medium truncate ${conv.is_archived ? 'text-gray-500' : 'text-gray-800'}`}>
+                                {conv.partner_name}
+                              </span>
+                              {conv.is_archived && (
+                                <span className="bg-gray-200 text-gray-600 text-xs px-1.5 py-0.5 rounded flex items-center">
+                                  <Archive size={10} className="mr-1" />
+                                  Done
+                                </span>
+                              )}
+                            </div>
+                            {conv.unread_count > 0 && (
+                              <span className="bg-nyu-violet text-white text-xs rounded-full px-2 py-0.5 ml-2">
+                                {conv.unread_count}
+                              </span>
+                            )}
+                          </div>
+                          {conv.listing_dining_hall && (
+                            <p className={`text-xs rounded px-2 py-0.5 mt-1 inline-block ${
+                              conv.is_archived ? 'text-gray-500 bg-gray-100' : 'text-nyu-violet bg-purple-50'
+                            }`}>
+                              {conv.listing_dining_hall} - ${conv.listing_price?.toFixed(2)}
+                            </p>
+                          )}
+                          <p className="text-sm text-gray-500 truncate mt-1">
+                            {conv.last_message}
+                          </p>
+                          <p className="text-xs text-gray-400 mt-1">
+                            {format(new Date(conv.last_message_at), 'MMM d, h:mm a')}
+                          </p>
+                        </div>
+                      </div>
+                    </button>
                   </div>
-                </button>
-              ))}
+                )
+              })}
             </div>
           )}
         </div>
@@ -359,6 +398,13 @@ const Messages = () => {
                     >
                       {selectedUser.name}
                     </Link>
+                    {/* Show archived badge */}
+                    {selectedUser.is_archived && (
+                      <span className="bg-gray-200 text-gray-600 text-xs px-1.5 py-0.5 rounded flex items-center">
+                        <Archive size={10} className="mr-1" />
+                        Archived
+                      </span>
+                    )}
                     {/* Show seller rating when partner is a seller (yellow) */}
                     {selectedUser.isPartnerSeller && (
                       <div className="flex items-center bg-yellow-50 px-2 py-0.5 rounded text-xs">
@@ -385,7 +431,9 @@ const Messages = () => {
                     )}
                   </div>
                   {selectedUser.listing_dining_hall && (
-                    <span className="text-xs text-nyu-violet bg-purple-50 rounded px-2 py-0.5 inline-block mt-1">
+                    <span className={`text-xs rounded px-2 py-0.5 inline-block mt-1 ${
+                      selectedUser.is_archived ? 'text-gray-500 bg-gray-100' : 'text-nyu-violet bg-purple-50'
+                    }`}>
                       {selectedUser.listing_dining_hall} - ${selectedUser.listing_price?.toFixed(2)}
                     </span>
                   )}

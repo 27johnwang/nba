@@ -61,24 +61,27 @@ router.get('/conversations', authenticateToken, (req, res) => {
           CASE
             WHEN sender_id = ? THEN receiver_id
             ELSE sender_id
-          END as partner_id
+          END as partner_id,
+          listing_id
         FROM messages
         WHERE sender_id = ? OR receiver_id = ?
       ),
       last_messages AS (
         SELECT
           cp.partner_id,
+          cp.listing_id as conv_listing_id,
           m.id,
           m.content,
           m.created_at,
           m.is_read,
           m.sender_id,
           m.listing_id,
-          ROW_NUMBER() OVER (PARTITION BY cp.partner_id ORDER BY m.created_at DESC) as rn
+          ROW_NUMBER() OVER (PARTITION BY cp.partner_id, cp.listing_id ORDER BY m.created_at DESC) as rn
         FROM conversation_partners cp
         JOIN messages m ON
-          (m.sender_id = ? AND m.receiver_id = cp.partner_id) OR
-          (m.receiver_id = ? AND m.sender_id = cp.partner_id)
+          ((m.sender_id = ? AND m.receiver_id = cp.partner_id) OR
+          (m.receiver_id = ? AND m.sender_id = cp.partner_id))
+          AND (m.listing_id = cp.listing_id OR (m.listing_id IS NULL AND cp.listing_id IS NULL))
       )
       SELECT
         lm.partner_id,
@@ -102,15 +105,24 @@ router.get('/conversations', authenticateToken, (req, res) => {
           WHERE sender_id = lm.partner_id
             AND receiver_id = ?
             AND is_read = 0
-        ) as unread_count
+        ) as unread_count,
+        ac.archived_at as is_archived
       FROM last_messages lm
       JOIN users u ON lm.partner_id = u.id
       LEFT JOIN listings l ON lm.listing_id = l.id
+      LEFT JOIN archived_conversations ac ON (
+        ac.user_id = ? AND ac.partner_id = lm.partner_id AND
+        (ac.listing_id = lm.listing_id OR (ac.listing_id IS NULL AND lm.listing_id IS NULL))
+      )
       WHERE lm.rn = 1
-      ORDER BY lm.created_at DESC
+      ORDER BY
+        CASE WHEN ac.archived_at IS NOT NULL THEN 0 ELSE 1 END,
+        ac.archived_at DESC,
+        lm.created_at DESC
     `).all(
       req.user.id, req.user.id, req.user.id,
-      req.user.id, req.user.id, req.user.id
+      req.user.id, req.user.id, req.user.id,
+      req.user.id
     );
 
     res.json({ conversations });
@@ -195,6 +207,56 @@ router.put('/read/:userId', authenticateToken, (req, res) => {
   } catch (error) {
     console.error('Mark read error:', error);
     res.status(500).json({ error: 'Error marking messages as read' });
+  }
+});
+
+// Archive a conversation
+router.post('/archive', authenticateToken, (req, res) => {
+  try {
+    const { partner_id, listing_id } = req.body;
+
+    if (!partner_id) {
+      return res.status(400).json({ error: 'Partner ID is required' });
+    }
+
+    // Check if already archived
+    const existing = db.prepare(`
+      SELECT id FROM archived_conversations
+      WHERE user_id = ? AND partner_id = ? AND (listing_id = ? OR (listing_id IS NULL AND ? IS NULL))
+    `).get(req.user.id, partner_id, listing_id || null, listing_id || null);
+
+    if (existing) {
+      return res.json({ message: 'Conversation already archived' });
+    }
+
+    const archiveId = uuidv4();
+    db.prepare(`
+      INSERT INTO archived_conversations (id, user_id, partner_id, listing_id)
+      VALUES (?, ?, ?, ?)
+    `).run(archiveId, req.user.id, partner_id, listing_id || null);
+
+    res.json({ message: 'Conversation archived' });
+  } catch (error) {
+    console.error('Archive conversation error:', error);
+    res.status(500).json({ error: 'Error archiving conversation' });
+  }
+});
+
+// Unarchive a conversation
+router.delete('/archive/:partnerId', authenticateToken, (req, res) => {
+  try {
+    const { partnerId } = req.params;
+    const { listing_id } = req.query;
+
+    db.prepare(`
+      DELETE FROM archived_conversations
+      WHERE user_id = ? AND partner_id = ? AND (listing_id = ? OR (listing_id IS NULL AND ? IS NULL))
+    `).run(req.user.id, partnerId, listing_id || null, listing_id || null);
+
+    res.json({ message: 'Conversation unarchived' });
+  } catch (error) {
+    console.error('Unarchive conversation error:', error);
+    res.status(500).json({ error: 'Error unarchiving conversation' });
   }
 });
 
