@@ -48,7 +48,6 @@ const App = () => {
         <Route path="login" element={<Login />} />
         <Route path="register" element={<Register />} />
         <Route path="listings" element={<Listings />} />
-        <Route path="listings/:id" element={<ListingDetail />} />
         <Route
           path="listings/new"
           element={
@@ -57,6 +56,7 @@ const App = () => {
             </ProtectedRoute>
           }
         />
+        <Route path="listings/:id" element={<ListingDetail />} />
         <Route
           path="dashboard"
           element={
