@@ -51,37 +51,34 @@ router.post('/', authenticateToken, messageValidation, (req, res) => {
   }
 });
 
-// Get conversations list (unique users)
+// Get conversations list (unique users) - one conversation per partner
 router.get('/conversations', authenticateToken, (req, res) => {
   try {
-    // Get unique conversations with last message
+    // Get unique conversations with last message - grouped by partner only
     const conversations = db.prepare(`
       WITH conversation_partners AS (
         SELECT DISTINCT
           CASE
             WHEN sender_id = ? THEN receiver_id
             ELSE sender_id
-          END as partner_id,
-          listing_id
+          END as partner_id
         FROM messages
         WHERE sender_id = ? OR receiver_id = ?
       ),
       last_messages AS (
         SELECT
           cp.partner_id,
-          cp.listing_id as conv_listing_id,
           m.id,
           m.content,
           m.created_at,
           m.is_read,
           m.sender_id,
           m.listing_id,
-          ROW_NUMBER() OVER (PARTITION BY cp.partner_id, cp.listing_id ORDER BY m.created_at DESC) as rn
+          ROW_NUMBER() OVER (PARTITION BY cp.partner_id ORDER BY m.created_at DESC) as rn
         FROM conversation_partners cp
         JOIN messages m ON
-          ((m.sender_id = ? AND m.receiver_id = cp.partner_id) OR
-          (m.receiver_id = ? AND m.sender_id = cp.partner_id))
-          AND (m.listing_id = cp.listing_id OR (m.listing_id IS NULL AND cp.listing_id IS NULL))
+          (m.sender_id = ? AND m.receiver_id = cp.partner_id) OR
+          (m.receiver_id = ? AND m.sender_id = cp.partner_id)
       )
       SELECT
         lm.partner_id,
@@ -111,8 +108,7 @@ router.get('/conversations', authenticateToken, (req, res) => {
       JOIN users u ON lm.partner_id = u.id
       LEFT JOIN listings l ON lm.listing_id = l.id
       LEFT JOIN archived_conversations ac ON (
-        ac.user_id = ? AND ac.partner_id = lm.partner_id AND
-        (ac.listing_id = lm.listing_id OR (ac.listing_id IS NULL AND lm.listing_id IS NULL))
+        ac.user_id = ? AND ac.partner_id = lm.partner_id
       )
       WHERE lm.rn = 1
       ORDER BY
@@ -209,10 +205,10 @@ router.put('/read/:userId', authenticateToken, (req, res) => {
   }
 });
 
-// Archive a conversation
+// Archive a conversation (by partner only)
 router.post('/archive', authenticateToken, (req, res) => {
   try {
-    const { partner_id, listing_id } = req.body;
+    const { partner_id } = req.body;
 
     if (!partner_id) {
       return res.status(400).json({ error: 'Partner ID is required' });
@@ -221,8 +217,8 @@ router.post('/archive', authenticateToken, (req, res) => {
     // Check if already archived
     const existing = db.prepare(`
       SELECT id FROM archived_conversations
-      WHERE user_id = ? AND partner_id = ? AND (listing_id = ? OR (listing_id IS NULL AND ? IS NULL))
-    `).get(req.user.id, partner_id, listing_id || null, listing_id || null);
+      WHERE user_id = ? AND partner_id = ?
+    `).get(req.user.id, partner_id);
 
     if (existing) {
       return res.json({ message: 'Conversation already archived' });
@@ -231,8 +227,8 @@ router.post('/archive', authenticateToken, (req, res) => {
     const archiveId = uuidv4();
     db.prepare(`
       INSERT INTO archived_conversations (id, user_id, partner_id, listing_id)
-      VALUES (?, ?, ?, ?)
-    `).run(archiveId, req.user.id, partner_id, listing_id || null);
+      VALUES (?, ?, ?, NULL)
+    `).run(archiveId, req.user.id, partner_id);
 
     res.json({ message: 'Conversation archived' });
   } catch (error) {
@@ -241,16 +237,15 @@ router.post('/archive', authenticateToken, (req, res) => {
   }
 });
 
-// Unarchive a conversation
+// Unarchive a conversation (by partner only)
 router.delete('/archive/:partnerId', authenticateToken, (req, res) => {
   try {
     const { partnerId } = req.params;
-    const { listing_id } = req.query;
 
     db.prepare(`
       DELETE FROM archived_conversations
-      WHERE user_id = ? AND partner_id = ? AND (listing_id = ? OR (listing_id IS NULL AND ? IS NULL))
-    `).run(req.user.id, partnerId, listing_id || null, listing_id || null);
+      WHERE user_id = ? AND partner_id = ?
+    `).run(req.user.id, partnerId);
 
     res.json({ message: 'Conversation unarchived' });
   } catch (error) {

@@ -51,8 +51,13 @@ router.post('/', authenticateToken, (req, res) => {
 
     // Don't update listing quantity/status yet - only when seller confirms
 
-    // Automatically create a message for this listing to start a conversation
-    // This ensures new listing requests have their own conversation thread
+    // Unarchive any existing conversation with this seller (move from archives to active)
+    db.prepare(`
+      DELETE FROM archived_conversations
+      WHERE (user_id = ? AND partner_id = ?) OR (user_id = ? AND partner_id = ?)
+    `).run(req.user.id, listing.seller_id, listing.seller_id, req.user.id);
+
+    // Send an automatic message to start/continue the conversation
     const messageId = uuidv4();
     db.prepare(`
       INSERT INTO messages (id, sender_id, receiver_id, listing_id, content)
@@ -271,20 +276,32 @@ router.put('/:id/status', authenticateToken, (req, res) => {
           WHERE listing_id = ? AND id != ? AND status IN ('pending', 'confirmed')
         `).run(listing.id, req.params.id);
 
-        // Archive the conversation with the completed buyer (for seller)
-        const archiveId = uuidv4();
-        db.prepare(`
-          INSERT OR IGNORE INTO archived_conversations (id, user_id, partner_id, listing_id)
-          VALUES (?, ?, ?, ?)
-        `).run(archiveId, transaction.seller_id, transaction.buyer_id, listing.id);
+        // Archive the conversation with the completed buyer (for seller) - by partner only
+        const existingArchive = db.prepare(`
+          SELECT id FROM archived_conversations WHERE user_id = ? AND partner_id = ?
+        `).get(transaction.seller_id, transaction.buyer_id);
+
+        if (!existingArchive) {
+          const archiveId = uuidv4();
+          db.prepare(`
+            INSERT INTO archived_conversations (id, user_id, partner_id, listing_id)
+            VALUES (?, ?, ?, NULL)
+          `).run(archiveId, transaction.seller_id, transaction.buyer_id);
+        }
 
         // Archive conversations with rejected buyers (for seller)
         for (const tx of otherTransactions) {
-          const rejectedArchiveId = uuidv4();
-          db.prepare(`
-            INSERT OR IGNORE INTO archived_conversations (id, user_id, partner_id, listing_id)
-            VALUES (?, ?, ?, ?)
-          `).run(rejectedArchiveId, transaction.seller_id, tx.buyer_id, listing.id);
+          const existingRejectedArchive = db.prepare(`
+            SELECT id FROM archived_conversations WHERE user_id = ? AND partner_id = ?
+          `).get(transaction.seller_id, tx.buyer_id);
+
+          if (!existingRejectedArchive) {
+            const rejectedArchiveId = uuidv4();
+            db.prepare(`
+              INSERT INTO archived_conversations (id, user_id, partner_id, listing_id)
+              VALUES (?, ?, ?, NULL)
+            `).run(rejectedArchiveId, transaction.seller_id, tx.buyer_id);
+          }
         }
       }
       db.prepare(`

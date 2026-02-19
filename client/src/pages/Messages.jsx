@@ -302,10 +302,10 @@ const Messages = () => {
               {/* Active conversations */}
               {conversations.filter(c => !c.is_archived).map((conv) => (
                 <button
-                  key={`${conv.partner_id}-${conv.listing_id || 'no-listing'}`}
+                  key={conv.partner_id}
                   onClick={() => selectConversation(conv)}
                   className={`w-full p-4 text-left hover:bg-gray-50 border-b transition-colors ${
-                    selectedUser?.id === conv.partner_id && selectedUser?.listing_id === conv.listing_id ? 'bg-purple-50' : ''
+                    selectedUser?.id === conv.partner_id ? 'bg-purple-50' : ''
                   }`}
                 >
                   <div className="flex items-start">
@@ -362,10 +362,10 @@ const Messages = () => {
 
                   {showArchives && conversations.filter(c => c.is_archived).map((conv) => (
                     <button
-                      key={`${conv.partner_id}-${conv.listing_id || 'no-listing'}`}
+                      key={conv.partner_id}
                       onClick={() => selectConversation(conv)}
                       className={`w-full p-4 text-left hover:bg-gray-100 border-b transition-colors bg-gray-50 ${
-                        selectedUser?.id === conv.partner_id && selectedUser?.listing_id === conv.listing_id ? 'bg-purple-50' : ''
+                        selectedUser?.id === conv.partner_id ? 'bg-purple-50' : ''
                       }`}
                     >
                       <div className="flex items-start">
