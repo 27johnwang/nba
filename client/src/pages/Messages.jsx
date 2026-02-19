@@ -3,7 +3,7 @@ import { useParams, Link, useSearchParams } from 'react-router-dom'
 import { useAuth } from '../context/AuthContext'
 import api from '../utils/api'
 import { format } from 'date-fns'
-import { Send, ArrowLeft, User, MessageSquare, Star, CheckCircle, Heart } from 'lucide-react'
+import { Send, ArrowLeft, User, MessageSquare, Star, CheckCircle, Heart, XCircle } from 'lucide-react'
 
 const Messages = () => {
   const { userId } = useParams()
@@ -17,6 +17,7 @@ const Messages = () => {
   const [sending, setSending] = useState(false)
   const [transaction, setTransaction] = useState(null)
   const [actionLoading, setActionLoading] = useState(false)
+  const [rejectConfirm, setRejectConfirm] = useState(false)
   const messagesEndRef = useRef(null)
 
   useEffect(() => {
@@ -206,6 +207,33 @@ const Messages = () => {
     }
   }
 
+  const handleUnfavorite = async () => {
+    if (!transaction) return
+    setActionLoading(true)
+    try {
+      await api.put(`/transactions/${transaction.id}/status`, { status: 'pending' })
+      setTransaction({ ...transaction, status: 'pending' })
+    } catch (err) {
+      console.error('Failed to unfavorite:', err)
+    } finally {
+      setActionLoading(false)
+    }
+  }
+
+  const handleRejectRequest = async () => {
+    if (!transaction) return
+    setActionLoading(true)
+    try {
+      await api.put(`/transactions/${transaction.id}/status`, { status: 'cancelled' })
+      setTransaction(null)
+      setRejectConfirm(false)
+    } catch (err) {
+      console.error('Failed to reject request:', err)
+    } finally {
+      setActionLoading(false)
+    }
+  }
+
   if (loading) {
     return (
       <div className="flex justify-center items-center py-12">
@@ -350,10 +378,14 @@ const Messages = () => {
                       </button>
                     )}
                     {transaction.status === 'confirmed' && (
-                      <span className="text-xs font-medium text-green-600 bg-green-100 px-2 py-1.5 rounded flex items-center">
-                        <Heart size={12} className="mr-1" fill="currentColor" />
-                        Favorited
-                      </span>
+                      <button
+                        onClick={handleUnfavorite}
+                        disabled={actionLoading}
+                        className="btn-secondary text-sm py-1.5 px-3 flex items-center text-gray-600"
+                      >
+                        <Heart size={14} className="mr-1" />
+                        {actionLoading ? '...' : 'Unfavorite'}
+                      </button>
                     )}
                     <button
                       onClick={handleCompleteTrade}
@@ -362,6 +394,14 @@ const Messages = () => {
                     >
                       <CheckCircle size={14} className="mr-1" />
                       {actionLoading ? '...' : 'Complete Trade'}
+                    </button>
+                    <button
+                      onClick={() => setRejectConfirm(true)}
+                      disabled={actionLoading}
+                      className="btn-secondary text-sm py-1.5 px-2 text-red-600 hover:bg-red-50"
+                      title="Reject request"
+                    >
+                      <XCircle size={16} />
                     </button>
                   </div>
                 )}
@@ -432,6 +472,33 @@ const Messages = () => {
           )}
         </div>
       </div>
+
+      {/* Reject Request Confirmation Modal */}
+      {rejectConfirm && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
+          <div className="bg-white rounded-xl max-w-md w-full p-6">
+            <h2 className="text-xl font-bold text-gray-800 mb-4">Reject Request?</h2>
+            <p className="text-gray-600 mb-6">
+              Are you sure you want to reject <span className="font-semibold">{selectedUser?.name}</span>'s request? They will be notified that their request was declined.
+            </p>
+            <div className="flex gap-3">
+              <button
+                onClick={() => setRejectConfirm(false)}
+                className="btn-secondary flex-1"
+              >
+                Cancel
+              </button>
+              <button
+                onClick={handleRejectRequest}
+                disabled={actionLoading}
+                className="bg-red-500 hover:bg-red-600 text-white font-medium py-2 px-4 rounded-lg flex-1"
+              >
+                {actionLoading ? 'Rejecting...' : 'Reject'}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   )
 }

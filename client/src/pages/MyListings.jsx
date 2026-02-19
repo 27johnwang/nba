@@ -33,6 +33,7 @@ const MyListings = () => {
   const [buyerRequests, setBuyerRequests] = useState([])
   const [buyersLoading, setBuyersLoading] = useState(false)
   const [actionLoading, setActionLoading] = useState(null)
+  const [rejectConfirm, setRejectConfirm] = useState(null) // { id, name } for confirmation modal
 
   useEffect(() => {
     fetchListings()
@@ -106,6 +107,20 @@ const MyListings = () => {
     }
   }
 
+  const handleUnfavorite = async (transactionId) => {
+    setActionLoading(transactionId)
+    try {
+      await api.put(`/transactions/${transactionId}/status`, { status: 'pending' })
+      const response = await api.get(`/transactions/listing/${expandedListingId}`)
+      setBuyerRequests(response.data.transactions)
+      fetchListings()
+    } catch (err) {
+      setError(err.response?.data?.error || 'Failed to unfavorite')
+    } finally {
+      setActionLoading(null)
+    }
+  }
+
   const handleCompleteTrade = async (transactionId) => {
     setActionLoading(transactionId)
     try {
@@ -120,15 +135,17 @@ const MyListings = () => {
     }
   }
 
-  const handleCancelRequest = async (transactionId) => {
-    setActionLoading(transactionId)
+  const handleRejectRequest = async () => {
+    if (!rejectConfirm) return
+    setActionLoading(rejectConfirm.id)
     try {
-      await api.put(`/transactions/${transactionId}/status`, { status: 'cancelled' })
+      await api.put(`/transactions/${rejectConfirm.id}/status`, { status: 'cancelled' })
       const response = await api.get(`/transactions/listing/${expandedListingId}`)
       setBuyerRequests(response.data.transactions)
       fetchListings()
+      setRejectConfirm(null)
     } catch (err) {
-      setError(err.response?.data?.error || 'Failed to cancel request')
+      setError(err.response?.data?.error || 'Failed to reject request')
     } finally {
       setActionLoading(null)
     }
@@ -524,24 +541,27 @@ const MyListings = () => {
                                   <CheckCircle size={14} className="mr-1.5" />
                                   {actionLoading === tx.id ? '...' : 'Complete'}
                                 </button>
-                                <button
-                                  onClick={() => handleCancelRequest(tx.id)}
-                                  disabled={actionLoading === tx.id}
-                                  className="btn-secondary text-sm py-2 text-red-600 hover:bg-red-50"
-                                >
-                                  <XCircle size={14} />
-                                </button>
                               </>
                             )}
                             {tx.status === 'confirmed' && (
-                              <button
-                                onClick={() => handleCompleteTrade(tx.id)}
-                                disabled={actionLoading === tx.id}
-                                className="flex-1 text-sm py-2 font-medium rounded-lg bg-green-600 hover:bg-green-700 text-white flex items-center justify-center"
-                              >
-                                <CheckCircle size={14} className="mr-1.5" />
-                                {actionLoading === tx.id ? '...' : 'Complete Trade'}
-                              </button>
+                              <>
+                                <button
+                                  onClick={() => handleUnfavorite(tx.id)}
+                                  disabled={actionLoading === tx.id}
+                                  className="btn-secondary text-sm py-2 flex items-center justify-center text-gray-600"
+                                >
+                                  <Heart size={14} className="mr-1.5" />
+                                  {actionLoading === tx.id ? '...' : 'Unfavorite'}
+                                </button>
+                                <button
+                                  onClick={() => handleCompleteTrade(tx.id)}
+                                  disabled={actionLoading === tx.id}
+                                  className="flex-1 text-sm py-2 font-medium rounded-lg bg-green-600 hover:bg-green-700 text-white flex items-center justify-center"
+                                >
+                                  <CheckCircle size={14} className="mr-1.5" />
+                                  {actionLoading === tx.id ? '...' : 'Complete Trade'}
+                                </button>
+                              </>
                             )}
                             <Link
                               to={`/messages/${tx.buyer_id}?dining_hall=${encodeURIComponent(listing.dining_hall)}&price=${listing.price}&role=seller&listing_id=${listing.id}`}
@@ -550,6 +570,14 @@ const MyListings = () => {
                               <MessageSquare size={14} className="mr-1" />
                               Chat
                             </Link>
+                            <button
+                              onClick={() => setRejectConfirm({ id: tx.id, name: tx.buyer_name })}
+                              disabled={actionLoading === tx.id}
+                              className="btn-secondary text-sm py-2 text-red-600 hover:bg-red-50"
+                              title="Reject request"
+                            >
+                              <XCircle size={14} />
+                            </button>
                           </div>
                         </div>
                       ))}
@@ -592,6 +620,33 @@ const MyListings = () => {
                 className="bg-red-500 hover:bg-red-600 text-white font-medium py-2 px-4 rounded-lg flex-1"
               >
                 Delete
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Reject Request Confirmation Modal */}
+      {rejectConfirm && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
+          <div className="bg-white rounded-xl max-w-md w-full p-6">
+            <h2 className="text-xl font-bold text-gray-800 mb-4">Reject Request?</h2>
+            <p className="text-gray-600 mb-6">
+              Are you sure you want to reject <span className="font-semibold">{rejectConfirm.name}</span>'s request? They will be notified that their request was declined.
+            </p>
+            <div className="flex gap-3">
+              <button
+                onClick={() => setRejectConfirm(null)}
+                className="btn-secondary flex-1"
+              >
+                Cancel
+              </button>
+              <button
+                onClick={handleRejectRequest}
+                disabled={actionLoading === rejectConfirm.id}
+                className="bg-red-500 hover:bg-red-600 text-white font-medium py-2 px-4 rounded-lg flex-1"
+              >
+                {actionLoading === rejectConfirm.id ? 'Rejecting...' : 'Reject'}
               </button>
             </div>
           </div>
