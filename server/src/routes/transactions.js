@@ -310,8 +310,21 @@ router.put('/:id/status', authenticateToken, (req, res) => {
         WHERE id = ?
       `).run(status, req.params.id);
     } else if (status === 'cancelled') {
-      // Just cancel the transaction - quantity is only affected on completion
+      // Cancel the transaction and archive the conversation
       db.prepare('UPDATE transactions SET status = ? WHERE id = ?').run(status, req.params.id);
+
+      // Archive conversation with this buyer (for seller)
+      const existingArchive = db.prepare(`
+        SELECT id FROM archived_conversations WHERE user_id = ? AND partner_id = ?
+      `).get(transaction.seller_id, transaction.buyer_id);
+
+      if (!existingArchive) {
+        const archiveId = uuidv4();
+        db.prepare(`
+          INSERT INTO archived_conversations (id, user_id, partner_id, listing_id)
+          VALUES (?, ?, ?, NULL)
+        `).run(archiveId, transaction.seller_id, transaction.buyer_id);
+      }
     } else {
       db.prepare('UPDATE transactions SET status = ? WHERE id = ?').run(status, req.params.id);
     }

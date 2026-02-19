@@ -263,6 +263,13 @@ const Messages = () => {
       await api.put(`/transactions/${transaction.id}/status`, { status: 'cancelled' })
       setTransaction(null)
       setRejectConfirm(false)
+      // Refresh conversations to update archive status
+      const response = await api.get('/messages/conversations')
+      setConversations(response.data.conversations)
+      // Update selectedUser to reflect archived status
+      if (selectedUser) {
+        setSelectedUser({ ...selectedUser, is_archived: true })
+      }
     } catch (err) {
       console.error('Failed to reject request:', err)
     } finally {
