@@ -17,7 +17,8 @@ import {
   Star,
   MessageSquare,
   XCircle,
-  ArrowLeft
+  ArrowLeft,
+  Heart
 } from 'lucide-react'
 
 const MyListings = () => {
@@ -90,7 +91,7 @@ const MyListings = () => {
     }
   }
 
-  const handleMarkInterest = async (transactionId) => {
+  const handleFavorite = async (transactionId) => {
     setActionLoading(transactionId)
     try {
       await api.put(`/transactions/${transactionId}/status`, { status: 'confirmed' })
@@ -99,13 +100,13 @@ const MyListings = () => {
       setBuyerRequests(response.data.transactions)
       fetchListings()
     } catch (err) {
-      setError(err.response?.data?.error || 'Failed to mark interest')
+      setError(err.response?.data?.error || 'Failed to favorite')
     } finally {
       setActionLoading(null)
     }
   }
 
-  const handleConfirmTransaction = async (transactionId) => {
+  const handleCompleteTrade = async (transactionId) => {
     setActionLoading(transactionId)
     try {
       await api.put(`/transactions/${transactionId}/status`, { status: 'completed' })
@@ -113,7 +114,7 @@ const MyListings = () => {
       setBuyerRequests(response.data.transactions)
       fetchListings()
     } catch (err) {
-      setError(err.response?.data?.error || 'Failed to confirm transaction')
+      setError(err.response?.data?.error || 'Failed to complete trade')
     } finally {
       setActionLoading(null)
     }
@@ -317,7 +318,7 @@ const MyListings = () => {
                           {listing.confirmed_count > 0 && (
                             <span className="inline-flex items-center bg-green-100 text-green-700 text-sm px-3 py-1 rounded-full">
                               <CheckCircle size={14} className="mr-1" />
-                              {listing.confirmed_count} interested
+                              {listing.confirmed_count} favorited
                             </span>
                           )}
                           {listing.pending_count > 0 && (
@@ -479,8 +480,9 @@ const MyListings = () => {
                                     {tx.buyer_name}
                                   </Link>
                                   {tx.status === 'confirmed' && (
-                                    <span className="text-xs font-medium text-green-600 bg-green-100 px-2 py-0.5 rounded">
-                                      Interested
+                                    <span className="text-xs font-medium text-green-600 bg-green-100 px-2 py-0.5 rounded flex items-center">
+                                      <Heart size={10} className="mr-0.5" fill="currentColor" />
+                                      Favorited
                                     </span>
                                   )}
                                 </div>
@@ -507,12 +509,20 @@ const MyListings = () => {
                             {tx.status === 'pending' && (
                               <>
                                 <button
-                                  onClick={() => handleMarkInterest(tx.id)}
+                                  onClick={() => handleFavorite(tx.id)}
                                   disabled={actionLoading === tx.id}
                                   className="flex-1 btn-primary text-sm py-2 flex items-center justify-center"
                                 >
+                                  <Heart size={14} className="mr-1.5" />
+                                  {actionLoading === tx.id ? '...' : 'Favorite'}
+                                </button>
+                                <button
+                                  onClick={() => handleCompleteTrade(tx.id)}
+                                  disabled={actionLoading === tx.id}
+                                  className="text-sm py-2 font-medium rounded-lg bg-green-600 hover:bg-green-700 text-white flex items-center justify-center px-3"
+                                >
                                   <CheckCircle size={14} className="mr-1.5" />
-                                  {actionLoading === tx.id ? '...' : 'Mark Interest'}
+                                  {actionLoading === tx.id ? '...' : 'Complete'}
                                 </button>
                                 <button
                                   onClick={() => handleCancelRequest(tx.id)}
@@ -525,12 +535,12 @@ const MyListings = () => {
                             )}
                             {tx.status === 'confirmed' && (
                               <button
-                                onClick={() => handleConfirmTransaction(tx.id)}
+                                onClick={() => handleCompleteTrade(tx.id)}
                                 disabled={actionLoading === tx.id}
                                 className="flex-1 text-sm py-2 font-medium rounded-lg bg-green-600 hover:bg-green-700 text-white flex items-center justify-center"
                               >
                                 <CheckCircle size={14} className="mr-1.5" />
-                                {actionLoading === tx.id ? '...' : 'Confirm Transaction'}
+                                {actionLoading === tx.id ? '...' : 'Complete Trade'}
                               </button>
                             )}
                             <Link

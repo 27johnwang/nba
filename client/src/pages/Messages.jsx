@@ -3,7 +3,7 @@ import { useParams, Link, useSearchParams } from 'react-router-dom'
 import { useAuth } from '../context/AuthContext'
 import api from '../utils/api'
 import { format } from 'date-fns'
-import { Send, ArrowLeft, User, MessageSquare, Star, CheckCircle } from 'lucide-react'
+import { Send, ArrowLeft, User, MessageSquare, Star, CheckCircle, Heart } from 'lucide-react'
 
 const Messages = () => {
   const { userId } = useParams()
@@ -180,27 +180,27 @@ const Messages = () => {
     }
   }
 
-  const handleMarkInterest = async () => {
+  const handleFavorite = async () => {
     if (!transaction) return
     setActionLoading(true)
     try {
       await api.put(`/transactions/${transaction.id}/status`, { status: 'confirmed' })
       setTransaction({ ...transaction, status: 'confirmed' })
     } catch (err) {
-      console.error('Failed to mark interest:', err)
+      console.error('Failed to favorite:', err)
     } finally {
       setActionLoading(false)
     }
   }
 
-  const handleConfirmTransaction = async () => {
+  const handleCompleteTrade = async () => {
     if (!transaction) return
     setActionLoading(true)
     try {
       await api.put(`/transactions/${transaction.id}/status`, { status: 'completed' })
       setTransaction(null)
     } catch (err) {
-      console.error('Failed to confirm transaction:', err)
+      console.error('Failed to complete trade:', err)
     } finally {
       setActionLoading(false)
     }
@@ -338,27 +338,31 @@ const Messages = () => {
 
                 {/* Transaction actions for sellers */}
                 {transaction && (
-                  <div className="ml-auto">
+                  <div className="ml-auto flex gap-2">
                     {transaction.status === 'pending' && (
                       <button
-                        onClick={handleMarkInterest}
+                        onClick={handleFavorite}
                         disabled={actionLoading}
                         className="btn-primary text-sm py-1.5 px-3 flex items-center"
                       >
-                        <CheckCircle size={14} className="mr-1" />
-                        {actionLoading ? '...' : 'Mark Interest'}
+                        <Heart size={14} className="mr-1" />
+                        {actionLoading ? '...' : 'Favorite'}
                       </button>
                     )}
                     {transaction.status === 'confirmed' && (
-                      <button
-                        onClick={handleConfirmTransaction}
-                        disabled={actionLoading}
-                        className="btn-primary text-sm py-1.5 px-3 bg-green-600 hover:bg-green-700 flex items-center"
-                      >
-                        <CheckCircle size={14} className="mr-1" />
-                        {actionLoading ? '...' : 'Confirm Transaction'}
-                      </button>
+                      <span className="text-xs font-medium text-green-600 bg-green-100 px-2 py-1.5 rounded flex items-center">
+                        <Heart size={12} className="mr-1" fill="currentColor" />
+                        Favorited
+                      </span>
                     )}
+                    <button
+                      onClick={handleCompleteTrade}
+                      disabled={actionLoading}
+                      className="text-sm py-1.5 px-3 font-medium rounded-lg bg-green-600 hover:bg-green-700 text-white flex items-center"
+                    >
+                      <CheckCircle size={14} className="mr-1" />
+                      {actionLoading ? '...' : 'Complete Trade'}
+                    </button>
                   </div>
                 )}
               </div>
