@@ -256,7 +256,11 @@ const Layout = () => {
             </div>
             <div className="flex space-x-6 text-sm">
               <Link to="/listings" className="hover:text-white">Browse</Link>
-              <Link to="/register" className="hover:text-white">Sign Up</Link>
+              {isAuthenticated ? (
+                <Link to="/dashboard" className="hover:text-white">Dashboard</Link>
+              ) : (
+                <Link to="/register" className="hover:text-white">Sign Up</Link>
+              )}
             </div>
           </div>
           <div className="mt-6 pt-6 border-t border-gray-700 text-center text-sm">
