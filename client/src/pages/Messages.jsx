@@ -102,13 +102,22 @@ const Messages = () => {
 
     setSending(true)
     try {
+      // Preserve current selectedUser info before re-fetching
+      const currentUserInfo = { ...selectedUser }
+
       await api.post('/messages', {
         receiver_id: selectedUser.id,
         content: newMessage
       })
       setNewMessage('')
       fetchMessages(selectedUser.id)
-      fetchConversations()
+
+      // Re-fetch conversations but restore the listing info
+      const response = await api.get('/messages/conversations')
+      setConversations(response.data.conversations)
+
+      // Restore the selectedUser with preserved listing info
+      setSelectedUser(currentUserInfo)
     } catch (err) {
       console.error('Failed to send message:', err)
     } finally {
@@ -217,9 +226,13 @@ const Messages = () => {
                 >
                   <ArrowLeft size={20} />
                 </button>
-                <div className="bg-nyu-violet text-white w-10 h-10 rounded-full flex items-center justify-center font-semibold">
+                <Link
+                  to={`/user/${selectedUser.id}`}
+                  className="bg-nyu-violet text-white w-10 h-10 rounded-full flex items-center justify-center font-semibold hover:bg-nyu-violet-dark transition-colors cursor-pointer"
+                  title="View profile"
+                >
                   {selectedUser.name.charAt(0)}
-                </div>
+                </Link>
                 <div className="ml-3 flex-1">
                   <div className="flex items-center gap-2 flex-wrap">
                     <span className="font-semibold text-gray-800">

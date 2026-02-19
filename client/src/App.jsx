@@ -12,6 +12,7 @@ import Messages from './pages/Messages'
 import Profile from './pages/Profile'
 import MyListings from './pages/MyListings'
 import Transactions from './pages/Transactions'
+import UserProfile from './pages/UserProfile'
 
 const ProtectedRoute = ({ children }) => {
   const { isAuthenticated, loading } = useAuth()
@@ -102,6 +103,14 @@ const App = () => {
           element={
             <ProtectedRoute>
               <Profile />
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path="user/:userId"
+          element={
+            <ProtectedRoute>
+              <UserProfile />
             </ProtectedRoute>
           }
         />
