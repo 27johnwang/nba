@@ -22,6 +22,22 @@ router.get('/dining-halls', (req, res) => {
   res.json({ diningHalls: DINING_HALLS });
 });
 
+// Get user's own listings (must be before /:id to avoid route conflict)
+router.get('/user/me', authenticateToken, (req, res) => {
+  try {
+    const listings = db.prepare(`
+      SELECT * FROM listings
+      WHERE seller_id = ? AND status != 'deleted'
+      ORDER BY created_at DESC
+    `).all(req.user.id);
+
+    res.json({ listings });
+  } catch (error) {
+    console.error('Get user listings error:', error);
+    res.status(500).json({ error: 'Error fetching listings' });
+  }
+});
+
 // Get all active listings
 router.get('/', optionalAuth, (req, res) => {
   try {
@@ -247,22 +263,6 @@ router.delete('/:id', authenticateToken, (req, res) => {
   } catch (error) {
     console.error('Delete listing error:', error);
     res.status(500).json({ error: 'Error deleting listing' });
-  }
-});
-
-// Get user's own listings
-router.get('/user/me', authenticateToken, (req, res) => {
-  try {
-    const listings = db.prepare(`
-      SELECT * FROM listings
-      WHERE seller_id = ? AND status != 'deleted'
-      ORDER BY created_at DESC
-    `).all(req.user.id);
-
-    res.json({ listings });
-  } catch (error) {
-    console.error('Get user listings error:', error);
-    res.status(500).json({ error: 'Error fetching listings' });
   }
 });
 
