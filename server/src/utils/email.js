@@ -40,15 +40,20 @@ export const sendVerificationEmail = async (email, code, name) => {
 
   const htmlContent = `
     <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">
-      <h2 style="color: #57068c;">NYU Mealswipe Marketplace</h2>
+      <h2 style="color: #57068c;">Welcome to NYU Mealswipe Marketplace!</h2>
+      <p>Hi ${name},</p>
+      <p>Thanks for joining! We're excited to have you as part of the NYU community where students help each other make the most of their meal plans.</p>
+      <p>Here's your verification code:</p>
       <div style="background-color: #f5f5f5; padding: 20px; text-align: center; margin: 20px 0;">
         <span style="font-size: 32px; font-weight: bold; letter-spacing: 8px; color: #57068c;">${code}</span>
       </div>
+      <p>This code expires in 15 minutes.</p>
+      <p style="color: #666; font-size: 14px;">Happy swapping!</p>
     </div>
   `;
 
   try {
-    const result = await sendBrevoEmail(email, 'Verify your NYU Mealswipe account', htmlContent);
+    const result = await sendBrevoEmail(email, 'Welcome to NYU Mealswipe!', htmlContent);
     console.log(`Verification email sent to ${email}`, result);
   } catch (error) {
     console.error('Failed to send verification email:', error.message);
