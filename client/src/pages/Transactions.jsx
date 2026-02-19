@@ -25,6 +25,7 @@ const Transactions = () => {
   const [reviewModal, setReviewModal] = useState(null)
   const [reviewData, setReviewData] = useState({ rating: 5, comment: '' })
   const [reviewLoading, setReviewLoading] = useState(false)
+  const [dismissedNotifications, setDismissedNotifications] = useState(new Set())
 
   useEffect(() => {
     fetchTransactions()
@@ -81,6 +82,16 @@ const Transactions = () => {
       cancelled: 'bg-red-100 text-red-700'
     }
     return styles[status] || 'bg-gray-100 text-gray-600'
+  }
+
+  const dismissReviewNotification = (txId) => {
+    setDismissedNotifications(prev => new Set([...prev, txId]))
+  }
+
+  const shouldShowReviewNotification = (tx) => {
+    return tx.status === 'completed' &&
+           !tx.has_reviewed &&
+           !dismissedNotifications.has(tx.id)
   }
 
   if (loading) {
@@ -146,6 +157,22 @@ const Transactions = () => {
 
             return (
               <div key={tx.id} className="bg-white rounded-xl shadow-md p-6">
+                {/* Review notification banner */}
+                {shouldShowReviewNotification(tx) && (
+                  <button
+                    onClick={() => dismissReviewNotification(tx.id)}
+                    className="w-full mb-4 p-3 bg-yellow-50 border border-yellow-200 rounded-lg flex items-center justify-between hover:bg-yellow-100 transition-colors text-left"
+                  >
+                    <div className="flex items-center">
+                      <Star size={18} className="text-yellow-500 mr-2" fill="currentColor" />
+                      <span className="text-yellow-800 text-sm">
+                        How was your experience with <strong>{isBuyer ? tx.seller_name : tx.buyer_name}</strong>? Leave a review!
+                      </span>
+                    </div>
+                    <XCircle size={16} className="text-yellow-600 hover:text-yellow-800 shrink-0 ml-2" />
+                  </button>
+                )}
+
                 <div className="flex flex-col lg:flex-row justify-between">
                   <div className="flex-1">
                     <div className="flex items-center mb-2">

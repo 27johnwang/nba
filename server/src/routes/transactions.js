@@ -106,11 +106,19 @@ router.get('/', authenticateToken, (req, res) => {
 
     const transactions = db.prepare(query).all(...params);
 
-    // Add role flag to each transaction
-    const enrichedTransactions = transactions.map(t => ({
-      ...t,
-      user_role: t.buyer_id === req.user.id ? 'buyer' : 'seller'
-    }));
+    // Add role flag and review status to each transaction
+    const enrichedTransactions = transactions.map(t => {
+      // Check if user has already reviewed this transaction
+      const existingReview = db.prepare(`
+        SELECT id FROM reviews WHERE transaction_id = ? AND reviewer_id = ?
+      `).get(t.id, req.user.id);
+
+      return {
+        ...t,
+        user_role: t.buyer_id === req.user.id ? 'buyer' : 'seller',
+        has_reviewed: !!existingReview
+      };
+    });
 
     res.json({ transactions: enrichedTransactions });
   } catch (error) {
