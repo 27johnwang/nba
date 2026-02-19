@@ -217,11 +217,14 @@ router.put('/:id/status', authenticateToken, (req, res) => {
 
     // Status transition rules
     if (status === 'confirmed' && !isSeller) {
-      return res.status(403).json({ error: 'Only seller can confirm transaction' });
+      return res.status(403).json({ error: 'Only seller can favorite a buyer' });
     }
 
     if (status === 'confirmed' && transaction.status === 'pending') {
-      // Seller is confirming - now decrease listing quantity and mark sold if needed
+      // Seller is favoriting this buyer - just update status, don't touch listing
+      db.prepare('UPDATE transactions SET status = ? WHERE id = ?').run(status, req.params.id);
+    } else if (status === 'completed') {
+      // Complete the trade - now decrease listing quantity and mark sold if needed
       const listing = db.prepare('SELECT * FROM listings WHERE id = ?').get(transaction.listing_id);
       if (listing) {
         const newQuantity = listing.quantity - transaction.quantity;
@@ -229,35 +232,24 @@ router.put('/:id/status', authenticateToken, (req, res) => {
           db.prepare('UPDATE listings SET quantity = 0, status = ? WHERE id = ?')
             .run('sold', listing.id);
 
-          // Cancel all other pending transactions for this listing since it's sold out
+          // Cancel all other pending/confirmed transactions for this listing since it's sold out
           db.prepare(`
             UPDATE transactions
             SET status = 'cancelled'
-            WHERE listing_id = ? AND id != ? AND status = 'pending'
+            WHERE listing_id = ? AND id != ? AND status IN ('pending', 'confirmed')
           `).run(listing.id, req.params.id);
         } else {
           db.prepare('UPDATE listings SET quantity = ? WHERE id = ?')
             .run(newQuantity, listing.id);
         }
       }
-      db.prepare('UPDATE transactions SET status = ? WHERE id = ?').run(status, req.params.id);
-    } else if (status === 'completed') {
-      // Both parties can mark as completed
       db.prepare(`
         UPDATE transactions
         SET status = ?, completed_at = CURRENT_TIMESTAMP
         WHERE id = ?
       `).run(status, req.params.id);
     } else if (status === 'cancelled') {
-      // Restore listing quantity on cancellation only if transaction was confirmed
-      if (transaction.status === 'confirmed') {
-        const listing = db.prepare('SELECT * FROM listings WHERE id = ?').get(transaction.listing_id);
-        if (listing) {
-          const newQuantity = listing.quantity + transaction.quantity;
-          db.prepare('UPDATE listings SET quantity = ?, status = ? WHERE id = ?')
-            .run(newQuantity, 'active', listing.id);
-        }
-      }
+      // Just cancel the transaction - quantity is only affected on completion
       db.prepare('UPDATE transactions SET status = ? WHERE id = ?').run(status, req.params.id);
     } else {
       db.prepare('UPDATE transactions SET status = ? WHERE id = ?').run(status, req.params.id);
