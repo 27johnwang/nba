@@ -54,6 +54,15 @@ router.post('/', authenticateToken, async (req, res) => {
       WHERE (user_id = $1 AND partner_id = $2) OR (user_id = $3 AND partner_id = $4)
     `).run(req.user.id, listing.seller_id, listing.seller_id, req.user.id);
 
+    // Check if this is the first message from this buyer about this listing (for notification)
+    const existingMessage = await db.prepare(`
+      SELECT id FROM messages
+      WHERE sender_id = $1 AND receiver_id = $2 AND listing_id = $3
+      LIMIT 1
+    `).get(req.user.id, listing.seller_id, listing_id);
+
+    const shouldNotifySeller = !existingMessage;
+
     // Send an automatic message to start/continue the conversation
     const messageId = uuidv4();
     await db.prepare(`
@@ -67,11 +76,10 @@ router.post('/', authenticateToken, async (req, res) => {
       `Hi! I'd like to buy ${quantity} meal swipe${quantity > 1 ? 's' : ''} from your ${listing.dining_hall} listing.`
     );
 
-    // Send email to seller if this is the first request for this listing
-    if (!listing.notification_sent) {
+    // Send email to seller if this is the first message from this buyer about this listing
+    if (shouldNotifySeller) {
       const seller = await db.prepare('SELECT name, email FROM users WHERE id = $1').get(listing.seller_id);
       if (seller) {
-        await db.prepare('UPDATE listings SET notification_sent = 1 WHERE id = $1').run(listing_id);
         sendBuyRequestNotification(seller.email, seller.name, listing.dining_hall, listing.price);
       }
     }

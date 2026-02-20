@@ -3,6 +3,7 @@ import { v4 as uuidv4 } from 'uuid';
 import db from '../db/index.js';
 import { authenticateToken } from '../middleware/auth.js';
 import { messageValidation } from '../middleware/validation.js';
+import { sendBuyRequestNotification } from '../utils/email.js';
 
 const router = express.Router();
 
@@ -21,11 +22,27 @@ router.post('/', authenticateToken, messageValidation, async (req, res) => {
       return res.status(404).json({ error: 'Recipient not found' });
     }
 
-    // Verify listing if provided
+    // Verify listing if provided and get listing details
+    let listing = null;
     if (listing_id) {
-      const listing = await db.prepare('SELECT id FROM listings WHERE id = $1').get(listing_id);
+      listing = await db.prepare('SELECT * FROM listings WHERE id = $1').get(listing_id);
       if (!listing) {
         return res.status(404).json({ error: 'Listing not found' });
+      }
+    }
+
+    // Check if this is the first message from this buyer about this listing (for notification)
+    let shouldNotifySeller = false;
+    if (listing && listing.seller_id === receiver_id && listing.status === 'active') {
+      // Sender is buyer, receiver is seller - check for existing messages
+      const existingMessage = await db.prepare(`
+        SELECT id FROM messages
+        WHERE sender_id = $1 AND receiver_id = $2 AND listing_id = $3
+        LIMIT 1
+      `).get(req.user.id, receiver_id, listing_id);
+
+      if (!existingMessage) {
+        shouldNotifySeller = true;
       }
     }
 
@@ -35,6 +52,14 @@ router.post('/', authenticateToken, messageValidation, async (req, res) => {
       INSERT INTO messages (id, sender_id, receiver_id, listing_id, content)
       VALUES ($1, $2, $3, $4, $5)
     `).run(messageId, req.user.id, receiver_id, listing_id || null, content);
+
+    // Send notification to seller if this is first message from this buyer about this listing
+    if (shouldNotifySeller) {
+      const seller = await db.prepare('SELECT name, email FROM users WHERE id = $1').get(receiver_id);
+      if (seller) {
+        sendBuyRequestNotification(seller.email, seller.name, listing.dining_hall, listing.price);
+      }
+    }
 
     const message = await db.prepare(`
       SELECT m.*, sender.name as sender_name, receiver.name as receiver_name
