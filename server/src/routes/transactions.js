@@ -2,6 +2,7 @@ import express from 'express';
 import { v4 as uuidv4 } from 'uuid';
 import db from '../db/index.js';
 import { authenticateToken } from '../middleware/auth.js';
+import { sendBuyRequestNotification } from '../utils/email.js';
 
 const router = express.Router();
 
@@ -65,6 +66,15 @@ router.post('/', authenticateToken, async (req, res) => {
       listing_id,
       `Hi! I'd like to buy ${quantity} meal swipe${quantity > 1 ? 's' : ''} from your ${listing.dining_hall} listing.`
     );
+
+    // Send email to seller if this is the first request for this listing
+    if (!listing.notification_sent) {
+      const seller = await db.prepare('SELECT name, email FROM users WHERE id = $1').get(listing.seller_id);
+      if (seller) {
+        await db.prepare('UPDATE listings SET notification_sent = 1 WHERE id = $1').run(listing_id);
+        sendBuyRequestNotification(seller.email, seller.name, listing.dining_hall, listing.price);
+      }
+    }
 
     const transaction = await db.prepare(`
       SELECT t.*, l.title as listing_title, l.dining_hall,

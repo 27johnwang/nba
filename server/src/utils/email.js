@@ -88,3 +88,31 @@ export const sendPasswordResetEmail = async (email, code, name) => {
     throw new Error(`Email failed: ${error.message}`);
   }
 };
+
+// Send notification to seller when someone requests to buy
+export const sendBuyRequestNotification = async (email, sellerName, diningHall, price) => {
+  if (!process.env.BREVO_API_KEY) {
+    console.log('=== BUY REQUEST NOTIFICATION ===');
+    console.log(`To: ${email}`);
+    console.log(`Listing: ${diningHall} - $${price}`);
+    console.log('================================');
+    return;
+  }
+
+  const htmlContent = `
+    <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">
+      <h2 style="color: #57068c;">NYU Mealswipe Marketplace</h2>
+      <p>Hi ${sellerName},</p>
+      <p>Someone is interested in your meal swipe listing at <strong>${diningHall}</strong> for <strong>$${price}</strong>!</p>
+      <p>Open the app to view the request and start chatting with your buyer.</p>
+    </div>
+  `;
+
+  try {
+    const result = await sendBrevoEmail(email, 'Someone wants your meal swipe!', htmlContent);
+    console.log(`Buy request notification sent to ${email}`, result);
+  } catch (error) {
+    console.error('Failed to send buy request notification:', error.message);
+    // Don't throw - notification failure shouldn't block the transaction
+  }
+};

@@ -63,9 +63,20 @@ export const createTables = async (pool) => {
         available_time_start TEXT,
         available_time_end TEXT,
         status TEXT DEFAULT 'active',
+        notification_sent INTEGER DEFAULT 0,
         created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
         updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
       )
+    `);
+
+    // Add notification_sent column if it doesn't exist (for existing databases)
+    await client.query(`
+      DO $$
+      BEGIN
+        IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name='listings' AND column_name='notification_sent') THEN
+          ALTER TABLE listings ADD COLUMN notification_sent INTEGER DEFAULT 0;
+        END IF;
+      END $$;
     `);
 
     // Transactions table
