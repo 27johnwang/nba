@@ -24,7 +24,9 @@ const Layout = () => {
   const [dropdownOpen, setDropdownOpen] = useState(false)
   const [unreadCount, setUnreadCount] = useState(0)
 
-  // Check if current page is the messages page (to hide bottom nav)
+  // Check if user is in an active chat (messages with a userId) - hide bottom nav only then
+  const isInActiveChat = location.pathname.startsWith('/messages/') && location.pathname !== '/messages/'
+  // Check if on messages page at all (for padding adjustment)
   const isMessagesPage = location.pathname.startsWith('/messages')
 
   useEffect(() => {
@@ -256,7 +258,7 @@ const Layout = () => {
 
         {/* Main Content */}
         <main className={`flex-1 max-w-7xl px-4 sm:px-6 lg:px-8 ${
-          isMessagesPage ? 'py-0 md:py-8' : 'py-8'
+          isInActiveChat ? 'py-0 md:py-8' : 'py-4 md:py-8'
         }`}>
           <Outlet />
         </main>
@@ -293,8 +295,8 @@ const Layout = () => {
         </div>
       </footer>
 
-      {/* Mobile Bottom Navigation - hidden on messages page to not conflict with input */}
-      {!isMessagesPage && (
+      {/* Mobile Bottom Navigation - hidden only when in active chat to not conflict with input */}
+      {!isInActiveChat && (
         <nav className="md:hidden fixed bottom-0 left-0 right-0 bg-white border-t border-gray-200 z-50 safe-area-bottom">
           <div className="flex justify-around items-center h-16">
             <Link
@@ -383,8 +385,8 @@ const Layout = () => {
         </nav>
       )}
 
-      {/* Spacer for bottom nav on mobile - not needed on messages page */}
-      {!isMessagesPage && <div className="h-16 md:hidden" />}
+      {/* Spacer for bottom nav on mobile - not needed when in active chat */}
+      {!isInActiveChat && <div className="h-16 md:hidden" />}
     </div>
   )
 }
