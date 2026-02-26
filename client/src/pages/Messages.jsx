@@ -286,13 +286,13 @@ const Messages = () => {
   }
 
   return (
-    <div className={`flex flex-col w-full max-w-full overflow-x-hidden min-h-0 md:min-h-[500px] ${selectedUser ? 'h-[calc(100dvh-64px)]' : 'h-[calc(100dvh-160px)]'} md:h-[calc(100vh-180px)]`}>
+    <div className={`flex flex-col w-full max-w-full box-border overflow-x-hidden min-h-0 md:min-h-[500px] ${selectedUser ? 'h-[calc(100dvh-64px)]' : 'h-[calc(100dvh-160px)]'} md:h-[calc(100vh-180px)]`}>
       <h1 className="text-2xl font-bold text-gray-800 mb-4 hidden md:block">Messages</h1>
 
-      <div className="bg-white rounded-xl shadow-md flex-1 flex overflow-hidden border border-gray-200 w-full max-w-full">
+      <div className="bg-white rounded-xl shadow-md flex-1 flex overflow-hidden border border-gray-200 w-full max-w-full box-border">
         {/* Conversations List */}
-        <div className={`w-full md:w-80 border-r flex-shrink-0 flex flex-col ${selectedUser ? 'hidden md:block' : ''}`}>
-          <div className="p-4 border-b flex-shrink-0">
+        <div className={`w-full md:w-80 border-r flex-shrink-0 flex flex-col overflow-hidden ${selectedUser ? 'hidden md:block' : ''}`}>
+          <div className="p-4 border-b flex-shrink-0 w-full box-border">
             <h2 className="font-semibold text-gray-800">Conversations</h2>
           </div>
 

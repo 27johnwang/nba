@@ -248,7 +248,7 @@ const Layout = () => {
       </header>
 
       {/* Main Content with Ad Spaces */}
-      <div className="flex justify-center">
+      <div className="flex justify-center w-full max-w-full overflow-x-hidden">
         {/* Left Ad Space */}
         <aside className="hidden xl:block w-40 flex-shrink-0 p-4">
           <div className="sticky top-24 h-[600px] border-2 border-dashed border-gray-300 rounded-lg flex items-center justify-center bg-gray-50/50">
@@ -257,7 +257,7 @@ const Layout = () => {
         </aside>
 
         {/* Main Content */}
-        <main className={`flex-1 max-w-7xl px-4 sm:px-6 lg:px-8 safe-area-x overflow-x-hidden ${
+        <main className={`flex-1 w-full max-w-7xl px-4 sm:px-6 lg:px-8 safe-area-x overflow-x-hidden box-border ${
           isInActiveChat ? 'py-0 md:py-8' : 'py-4 md:py-8'
         }`}>
           <Outlet />
