@@ -4,3 +4,10 @@ dist/
 *.db
 data/
 .DS_Store
+
+# iOS
+client/ios/App/Pods/
+client/ios/App/App/public/
+client/ios/DerivedData/
+*.xcworkspace/xcuserdata/
+*.xcodeproj/xcuserdata/
