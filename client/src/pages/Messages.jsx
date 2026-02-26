@@ -286,8 +286,8 @@ const Messages = () => {
   }
 
   return (
-    <div className="flex flex-col" style={{ height: 'calc(100vh - 180px)', minHeight: '500px' }}>
-      <h1 className="text-2xl font-bold text-gray-800 mb-4">Messages</h1>
+    <div className="flex flex-col h-[calc(100dvh-140px)] md:h-[calc(100vh-180px)] min-h-0 md:min-h-[500px]">
+      <h1 className="text-2xl font-bold text-gray-800 mb-4 hidden md:block">Messages</h1>
 
       <div className="bg-white rounded-xl shadow-md flex-1 flex overflow-hidden">
         {/* Conversations List */}
@@ -428,38 +428,38 @@ const Messages = () => {
           {selectedUser ? (
             <>
               {/* Header */}
-              <div className="p-4 border-b flex items-center">
+              <div className="p-3 md:p-4 border-b flex items-center">
                 <button
                   onClick={() => setSelectedUser(null)}
-                  className="md:hidden mr-3 p-1 hover:bg-gray-100 rounded"
+                  className="md:hidden mr-2 p-1 hover:bg-gray-100 rounded flex-shrink-0"
                 >
                   <ArrowLeft size={20} />
                 </button>
                 <Link
                   to={`/user/${selectedUser.id}`}
-                  className="bg-nyu-violet text-white w-10 h-10 rounded-full flex items-center justify-center font-semibold hover:bg-nyu-violet-dark transition-colors cursor-pointer"
+                  className="bg-nyu-violet text-white w-8 h-8 md:w-10 md:h-10 rounded-full flex items-center justify-center font-semibold hover:bg-nyu-violet-dark transition-colors cursor-pointer flex-shrink-0 text-sm md:text-base"
                   title="View profile"
                 >
                   {selectedUser.name.charAt(0)}
                 </Link>
-                <div className="ml-3 flex-1">
-                  <div className="flex items-center gap-2 flex-wrap">
+                <div className="ml-2 md:ml-3 flex-1 min-w-0 overflow-hidden">
+                  <div className="flex items-center gap-1 md:gap-2 flex-wrap">
                     <Link
                       to={`/user/${selectedUser.id}`}
-                      className="font-semibold text-gray-800 hover:text-nyu-violet transition-colors"
+                      className="font-semibold text-gray-800 hover:text-nyu-violet transition-colors text-sm md:text-base truncate"
                     >
                       {selectedUser.name}
                     </Link>
                     {/* Show archived badge */}
                     {selectedUser.is_archived && (
-                      <span className="bg-gray-200 text-gray-600 text-xs px-1.5 py-0.5 rounded flex items-center">
+                      <span className="bg-gray-200 text-gray-600 text-xs px-1.5 py-0.5 rounded flex items-center flex-shrink-0">
                         <Archive size={10} className="mr-1" />
-                        Archived
+                        <span className="hidden md:inline">Archived</span>
                       </span>
                     )}
-                    {/* Show seller rating when partner is a seller (yellow) */}
+                    {/* Show seller rating when partner is a seller (yellow) - hidden on mobile */}
                     {selectedUser.isPartnerSeller && (
-                      <div className="flex items-center bg-yellow-50 px-2 py-0.5 rounded text-xs">
+                      <div className="hidden md:flex items-center bg-yellow-50 px-2 py-0.5 rounded text-xs">
                         <Star size={12} className="text-yellow-500" fill="currentColor" />
                         <span className="ml-1 text-gray-700">
                           {selectedUser.seller_rating > 0 ? selectedUser.seller_rating.toFixed(1) : 'N/A'}
@@ -469,9 +469,9 @@ const Messages = () => {
                         </span>
                       </div>
                     )}
-                    {/* Show buyer rating when partner is a buyer (blue) */}
+                    {/* Show buyer rating when partner is a buyer (blue) - hidden on mobile */}
                     {!selectedUser.isPartnerSeller && selectedUser.buyer_rating !== undefined && (
-                      <div className="flex items-center bg-blue-50 px-2 py-0.5 rounded text-xs">
+                      <div className="hidden md:flex items-center bg-blue-50 px-2 py-0.5 rounded text-xs">
                         <Star size={12} className="text-blue-500" fill="currentColor" />
                         <span className="ml-1 text-gray-700">
                           {selectedUser.buyer_rating > 0 ? selectedUser.buyer_rating.toFixed(1) : 'N/A'}
@@ -483,7 +483,7 @@ const Messages = () => {
                     )}
                   </div>
                   {selectedUser.listing_dining_hall && (
-                    <span className={`text-xs rounded px-2 py-0.5 inline-block mt-1 ${
+                    <span className={`text-xs rounded px-2 py-0.5 inline-block mt-0.5 md:mt-1 truncate max-w-full ${
                       selectedUser.is_archived ? 'text-gray-500 bg-gray-100' : 'text-nyu-violet bg-purple-50'
                     }`}>
                       {selectedUser.listing_dining_hall} - ${selectedUser.listing_price?.toFixed(2)}
@@ -493,39 +493,39 @@ const Messages = () => {
 
                 {/* Transaction actions for sellers */}
                 {transaction && (
-                  <div className="ml-auto flex gap-2">
+                  <div className="ml-auto flex gap-1 md:gap-2 flex-shrink-0">
                     {transaction.status === 'pending' && (
                       <button
                         onClick={handleFavorite}
                         disabled={actionLoading}
-                        className="btn-primary text-sm py-1.5 px-3 flex items-center"
+                        className="btn-primary text-xs md:text-sm py-1 md:py-1.5 px-2 md:px-3 flex items-center"
                       >
-                        <Heart size={14} className="mr-1" />
-                        {actionLoading ? '...' : 'Favorite'}
+                        <Heart size={14} className="md:mr-1" />
+                        <span className="hidden md:inline">{actionLoading ? '...' : 'Favorite'}</span>
                       </button>
                     )}
                     {transaction.status === 'confirmed' && (
                       <button
                         onClick={handleUnfavorite}
                         disabled={actionLoading}
-                        className="btn-secondary text-sm py-1.5 px-3 flex items-center text-gray-600"
+                        className="btn-secondary text-xs md:text-sm py-1 md:py-1.5 px-2 md:px-3 flex items-center text-gray-600"
                       >
-                        <Heart size={14} className="mr-1" />
-                        {actionLoading ? '...' : 'Unfavorite'}
+                        <Heart size={14} className="md:mr-1" />
+                        <span className="hidden md:inline">{actionLoading ? '...' : 'Unfavorite'}</span>
                       </button>
                     )}
                     <button
                       onClick={handleCompleteTrade}
                       disabled={actionLoading}
-                      className="text-sm py-1.5 px-3 font-medium rounded-lg bg-green-600 hover:bg-green-700 text-white flex items-center"
+                      className="text-xs md:text-sm py-1 md:py-1.5 px-2 md:px-3 font-medium rounded-lg bg-green-600 hover:bg-green-700 text-white flex items-center"
                     >
-                      <CheckCircle size={14} className="mr-1" />
-                      {actionLoading ? '...' : 'Complete Trade'}
+                      <CheckCircle size={14} className="md:mr-1" />
+                      <span className="hidden md:inline">{actionLoading ? '...' : 'Complete'}</span>
                     </button>
                     <button
                       onClick={() => setRejectConfirm(true)}
                       disabled={actionLoading}
-                      className="btn-secondary text-sm py-1.5 px-2 text-red-600 hover:bg-red-50"
+                      className="btn-secondary text-sm py-1 md:py-1.5 px-2 text-red-600 hover:bg-red-50"
                       title="Reject request"
                     >
                       <XCircle size={16} />
@@ -535,7 +535,7 @@ const Messages = () => {
               </div>
 
               {/* Messages */}
-              <div className="flex-1 overflow-y-auto p-4 space-y-4">
+              <div className="flex-1 overflow-y-auto p-3 md:p-4 space-y-3 md:space-y-4">
                 {messages.length === 0 ? (
                   <div className="text-center text-gray-500 py-8">
                     <p>No messages yet</p>
@@ -569,20 +569,20 @@ const Messages = () => {
               </div>
 
               {/* Input */}
-              <form onSubmit={handleSend} className="p-4 border-t">
+              <form onSubmit={handleSend} className="p-2 md:p-4 border-t">
                 <div className="flex gap-2">
                   <input
                     type="text"
                     value={newMessage}
                     onChange={(e) => setNewMessage(e.target.value)}
                     placeholder="Type a message..."
-                    className="input-field flex-1"
+                    className="input-field flex-1 text-base"
                     disabled={sending}
                   />
                   <button
                     type="submit"
                     disabled={sending || !newMessage.trim()}
-                    className="btn-primary px-4 disabled:opacity-50"
+                    className="btn-primary px-3 md:px-4 disabled:opacity-50"
                   >
                     <Send size={20} />
                   </button>
