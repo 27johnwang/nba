@@ -291,13 +291,13 @@ const Messages = () => {
 
       <div className="bg-white md:rounded-xl md:shadow-md flex-1 flex overflow-hidden border-t md:border border-gray-200">
         {/* Conversations List */}
-        <div className={`w-full md:w-80 border-r flex-shrink-0 ${selectedUser ? 'hidden md:block' : ''}`}>
-          <div className="p-4 border-b">
+        <div className={`w-full md:w-80 border-r flex-shrink-0 flex flex-col ${selectedUser ? 'hidden md:block' : ''}`}>
+          <div className="p-4 border-b flex-shrink-0">
             <h2 className="font-semibold text-gray-800">Conversations</h2>
           </div>
 
           {conversations.length === 0 ? (
-            <div className="p-6 text-center">
+            <div className="p-6 text-center flex-1">
               <MessageSquare size={48} className="mx-auto text-gray-300 mb-3" />
               <p className="text-gray-500">No messages yet</p>
               <p className="text-sm text-gray-400 mt-1">
@@ -305,7 +305,7 @@ const Messages = () => {
               </p>
             </div>
           ) : (
-            <div className="overflow-y-auto h-[calc(100%-60px)]">
+            <div className="overflow-y-auto flex-1">
               {/* Active conversations */}
               {conversations.filter(c => !c.is_archived).map((conv) => (
                 <button
