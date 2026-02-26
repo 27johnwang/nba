@@ -1,4 +1,4 @@
-import { Outlet, Link, useNavigate } from 'react-router-dom'
+import { Outlet, Link, useNavigate, useLocation } from 'react-router-dom'
 import { useAuth } from '../context/AuthContext'
 import { useState, useEffect } from 'react'
 import {
@@ -19,9 +19,13 @@ import api from '../utils/api'
 const Layout = () => {
   const { isAuthenticated, user, logout } = useAuth()
   const navigate = useNavigate()
+  const location = useLocation()
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false)
   const [dropdownOpen, setDropdownOpen] = useState(false)
   const [unreadCount, setUnreadCount] = useState(0)
+
+  // Check if current page is the messages page (to hide bottom nav)
+  const isMessagesPage = location.pathname.startsWith('/messages')
 
   useEffect(() => {
     if (isAuthenticated) {
@@ -263,8 +267,8 @@ const Layout = () => {
         </aside>
       </div>
 
-      {/* Footer */}
-      <footer className="bg-gray-800 text-gray-300 py-8 mt-auto">
+      {/* Footer - hidden on mobile when bottom nav is visible */}
+      <footer className="bg-gray-800 text-gray-300 py-8 mt-auto hidden md:block">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="flex flex-col md:flex-row justify-between items-center">
             <div className="mb-4 md:mb-0">
@@ -286,6 +290,99 @@ const Layout = () => {
           </div>
         </div>
       </footer>
+
+      {/* Mobile Bottom Navigation - hidden on messages page to not conflict with input */}
+      {!isMessagesPage && (
+        <nav className="md:hidden fixed bottom-0 left-0 right-0 bg-white border-t border-gray-200 z-50 safe-area-bottom">
+          <div className="flex justify-around items-center h-16">
+            <Link
+              to="/listings"
+              className={`flex flex-col items-center justify-center flex-1 h-full ${
+                location.pathname === '/listings' ? 'text-nyu-violet' : 'text-gray-500'
+              }`}
+            >
+              <Search size={22} />
+              <span className="text-xs mt-1">Browse</span>
+            </Link>
+
+            {isAuthenticated ? (
+              <>
+                <Link
+                  to="/listings/new"
+                  className={`flex flex-col items-center justify-center flex-1 h-full ${
+                    location.pathname === '/listings/new' ? 'text-nyu-violet' : 'text-gray-500'
+                  }`}
+                >
+                  <PlusCircle size={22} />
+                  <span className="text-xs mt-1">Sell</span>
+                </Link>
+
+                <Link
+                  to="/dashboard"
+                  className={`flex flex-col items-center justify-center flex-1 h-full ${
+                    location.pathname === '/dashboard' ? 'text-nyu-violet' : 'text-gray-500'
+                  }`}
+                >
+                  <LayoutDashboard size={22} />
+                  <span className="text-xs mt-1">Home</span>
+                </Link>
+
+                <Link
+                  to="/messages"
+                  className={`flex flex-col items-center justify-center flex-1 h-full relative ${
+                    location.pathname.startsWith('/messages') ? 'text-nyu-violet' : 'text-gray-500'
+                  }`}
+                >
+                  <div className="relative">
+                    <MessageSquare size={22} />
+                    {unreadCount > 0 && (
+                      <span className="absolute -top-1 -right-2 bg-red-500 text-white text-xs rounded-full h-4 w-4 flex items-center justify-center text-[10px]">
+                        {unreadCount > 9 ? '9+' : unreadCount}
+                      </span>
+                    )}
+                  </div>
+                  <span className="text-xs mt-1">Messages</span>
+                </Link>
+
+                <Link
+                  to="/profile"
+                  className={`flex flex-col items-center justify-center flex-1 h-full ${
+                    location.pathname === '/profile' ? 'text-nyu-violet' : 'text-gray-500'
+                  }`}
+                >
+                  <User size={22} />
+                  <span className="text-xs mt-1">Profile</span>
+                </Link>
+              </>
+            ) : (
+              <>
+                <Link
+                  to="/login"
+                  className={`flex flex-col items-center justify-center flex-1 h-full ${
+                    location.pathname === '/login' ? 'text-nyu-violet' : 'text-gray-500'
+                  }`}
+                >
+                  <User size={22} />
+                  <span className="text-xs mt-1">Login</span>
+                </Link>
+
+                <Link
+                  to="/register"
+                  className={`flex flex-col items-center justify-center flex-1 h-full ${
+                    location.pathname === '/register' ? 'text-nyu-violet' : 'text-gray-500'
+                  }`}
+                >
+                  <PlusCircle size={22} />
+                  <span className="text-xs mt-1">Sign Up</span>
+                </Link>
+              </>
+            )}
+          </div>
+        </nav>
+      )}
+
+      {/* Spacer for bottom nav on mobile - not needed on messages page */}
+      {!isMessagesPage && <div className="h-16 md:hidden" />}
     </div>
   )
 }

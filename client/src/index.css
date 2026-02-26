@@ -30,4 +30,9 @@ body {
   .card {
     @apply bg-white rounded-xl shadow-md hover:shadow-lg transition-shadow duration-200;
   }
+
+  /* Safe area for iOS devices with home indicator */
+  .safe-area-bottom {
+    padding-bottom: env(safe-area-inset-bottom, 0px);
+  }
 }
