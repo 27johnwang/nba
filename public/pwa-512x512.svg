@@ -1,0 +1,8 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512">
+  <rect width="512" height="512" rx="80" fill="#57068C"/>
+  <circle cx="256" cy="192" r="96" fill="none" stroke="white" stroke-width="12"/>
+  <path d="M180 192 a76 76 0 0 1 152 0" fill="none" stroke="white" stroke-width="8" stroke-linecap="round"/>
+  <rect x="160" y="320" width="192" height="20" rx="10" fill="white" opacity="0.9"/>
+  <rect x="192" y="360" width="128" height="16" rx="8" fill="white" opacity="0.6"/>
+  <text x="256" y="224" font-family="Arial, sans-serif" font-size="80" font-weight="bold" fill="white" text-anchor="middle">MS</text>
+</svg>
